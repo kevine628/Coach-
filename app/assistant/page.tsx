@@ -11,6 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Brain, Send, Sparkles, Lightbulb, Target, BookOpen, TrendingUp, MessageSquare, Bot, User } from "lucide-react"
 
+// Force dynamic rendering to avoid prerender issues
+export const dynamic = 'force-dynamic'
+
 interface ChatMessage {
   id: string
   content: string
