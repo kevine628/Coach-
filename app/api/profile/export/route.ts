@@ -1,71 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyToken } from '@/lib/auth'
+import { getAuthenticatedUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
-    }
-
-    const userId = await verifyToken(token)
-    if (!userId) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
+    const user = await getAuthenticatedUser(request)
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
     // Récupérer toutes les données de l'utilisateur
     const userData = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: user.id },
       include: {
-        goals: {
-          include: {
-            tasks: true
-          }
-        },
+        goals: true,
+        tasks: true,
         journalEntries: true,
+        notifications: true,
         chatMessages: true
       }
     })
 
     if (!userData) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Utilisateur non trouvé' },
+        { status: 404 }
+      )
     }
 
-    // Préparer les données pour l'export
+    // Préparer les données pour l'export (sans les mots de passe)
     const exportData = {
-      exportDate: new Date().toISOString(),
       user: {
         id: userData.id,
         name: userData.name,
         email: userData.email,
         phone: userData.phone,
-        location: userData.location,
+        location: (userData as any).location || null,
         preferences: userData.preferences,
         createdAt: userData.createdAt,
         updatedAt: userData.updatedAt
       },
-      goals: userData.goals.map((goal: any) => ({
+      goals: userData.goals.map(goal => ({
         id: goal.id,
         title: goal.title,
         description: goal.description,
-        category: goal.category,
-        status: goal.status,
         progress: goal.progress,
-        dueDate: goal.dueDate,
+        targetDate: goal.targetDate,
+        status: goal.status,
+        category: goal.category,
+        priority: goal.priority,
         createdAt: goal.createdAt,
-        updatedAt: goal.updatedAt,
-        tasks: goal.tasks.map((task: any) => ({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          completed: task.completed,
-          dueDate: task.dueDate,
-          createdAt: task.createdAt,
-          updatedAt: task.updatedAt
-        }))
+        updatedAt: goal.updatedAt
       })),
-      journalEntries: userData.journalEntries.map((entry: any) => ({
+      tasks: userData.tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        completed: task.completed,
+        dueDate: task.dueDate,
+        priority: task.priority,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt
+      })),
+      journalEntries: userData.journalEntries.map(entry => ({
         id: entry.id,
         title: entry.title,
         content: entry.content,
@@ -74,27 +72,36 @@ export async function GET(request: NextRequest) {
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt
       })),
-      chatMessages: userData.chatMessages.map((message: any) => ({
+      notifications: userData.notifications.map(notification => ({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        read: notification.read,
+        createdAt: notification.createdAt
+      })),
+      chatMessages: userData.chatMessages.map(message => ({
         id: message.id,
         content: message.content,
         role: message.role,
         createdAt: message.createdAt
-      }))
+      })),
+      exportDate: new Date().toISOString(),
+      exportVersion: '1.0'
     }
 
-    // Créer le fichier JSON
-    const jsonString = JSON.stringify(exportData, null, 2)
-    const blob = new Blob([jsonString], { type: 'application/json' })
+    // Créer la réponse avec le fichier JSON
+    const response = new NextResponse(JSON.stringify(exportData, null, 2))
+    response.headers.set('Content-Type', 'application/json')
+    response.headers.set('Content-Disposition', `attachment; filename="coachia-data-${new Date().toISOString().split('T')[0]}.json"`)
 
-    return new NextResponse(blob, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Disposition': 'attachment; filename="mes-donnees-coachia.json"'
-      }
-    })
+    return response
+
   } catch (error) {
     console.error('Erreur lors de l\'export des données:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
   }
 } 

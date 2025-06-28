@@ -3,9 +3,13 @@ import jwt from 'jsonwebtoken'
 import { prisma } from './prisma'
 import { NextRequest } from 'next/server'
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+
 export interface JWTPayload {
   userId: string
   email: string
+  iat?: number
+  exp?: number
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -16,47 +20,82 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return bcrypt.compare(password, hashedPassword)
 }
 
-export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' })
+export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>) {
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: '7d'
+  })
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
+    return jwt.verify(token, JWT_SECRET) as JWTPayload
   } catch (error) {
     return null
   }
 }
 
 export async function getAuthenticatedUser(request: NextRequest) {
-  const token = request.cookies.get('token')?.value
-  
-  if (!token) {
+  try {
+    // Récupérer le token depuis les cookies
+    const token = request.cookies.get('token')?.value
+
+    if (!token) {
+      return null
+    }
+
+    // Vérifier le token
+    const payload = verifyToken(token)
+    if (!payload) {
+      return null
+    }
+
+    // Récupérer l'utilisateur depuis la base de données
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    })
+
+    return user
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'utilisateur:', error)
     return null
   }
-
-  const payload = verifyToken(token)
-  if (!payload) {
-    return null
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId }
-  })
-
-  return user
 }
 
-export async function createUser(email: string, password: string, name?: string) {
-  const hashedPassword = await hashPassword(password)
-  
-  return prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      name
-    }
-  })
+export async function createUser(email: string, password: string, name: string) {
+  try {
+    const hashedPassword = await bcrypt.hash(password, 12)
+    
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        preferences: {
+          theme: 'light',
+          notifications: {
+            email: true,
+            push: false
+          },
+          language: 'fr'
+        }
+      }
+    })
+
+    const { password: _, ...userWithoutPassword } = user
+    return userWithoutPassword
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'utilisateur:', error)
+    throw error
+  }
 }
 
 export async function findUserByEmail(email: string) {
@@ -66,11 +105,28 @@ export async function findUserByEmail(email: string) {
 }
 
 export async function authenticateUser(email: string, password: string) {
-  const user = await findUserByEmail(email)
-  if (!user) return null
+  try {
+    // Trouver l'utilisateur par email
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
 
-  const isValid = await verifyPassword(password, user.password)
-  if (!isValid) return null
+    if (!user) {
+      return null
+    }
 
-  return user
+    // Vérifier le mot de passe
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    
+    if (!isPasswordValid) {
+      return null
+    }
+
+    // Retourner l'utilisateur sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user
+    return userWithoutPassword
+  } catch (error) {
+    console.error('Erreur lors de l\'authentification:', error)
+    return null
+  }
 } 

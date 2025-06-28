@@ -1,160 +1,173 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    // Vérifier l'authentification
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
     }
 
-    const userId = await verifyToken(token)
-    if (!userId) {
+    const decoded = verifyToken(token)
+    if (!decoded) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
-    // Récupérer les données utilisateur pour calculer les accomplissements
-    const [goals, tasks, journalEntries] = await Promise.all([
-      prisma.goal.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          status: true,
-          createdAt: true
-        }
-      }),
-      prisma.task.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          completed: true,
-          createdAt: true
-        }
-      }),
-      prisma.journalEntry.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          createdAt: true
-        }
-      })
-    ])
+    const { searchParams } = new URL(request.url)
+    const category = searchParams.get('category')
+    const unlocked = searchParams.get('unlocked')
+
+    // Construire la requête
+    const where: any = {}
+    if (category) {
+      where.category = category
+    }
+
+    // Récupérer tous les achievements
+    const achievements = await prisma.achievement.findMany({
+      where,
+      orderBy: { points: 'desc' }
+    })
+
+    // Récupérer les achievements de l'utilisateur
+    const userAchievements = await prisma.userAchievement.findMany({
+      where: { userId: decoded.userId },
+      include: { achievement: true }
+    })
+
+    // Combiner les données
+    const achievementsWithProgress = achievements.map((achievement: any) => {
+      const userAchievement = userAchievements.find((ua: any) => ua.achievementId === achievement.id)
+      const isUnlocked = !!userAchievement
+      const progress = userAchievement?.progress || 0
+
+      return {
+        id: achievement.id,
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+        category: achievement.category,
+        rarity: achievement.rarity,
+        points: achievement.points,
+        unlocked: isUnlocked,
+        unlockedAt: userAchievement?.unlockedAt,
+        progress: progress,
+        criteria: achievement.criteria
+      }
+    })
+
+    // Filtrer par statut si demandé
+    const filteredAchievements = unlocked === 'true' 
+      ? achievementsWithProgress.filter((a: any) => a.unlocked)
+      : unlocked === 'false'
+      ? achievementsWithProgress.filter((a: any) => !a.unlocked)
+      : achievementsWithProgress
 
     // Calculer les statistiques
-    const totalGoals = goals.length
-    const completedGoals = goals.filter((g: any) => g.status === 'COMPLETED').length
-    const totalTasks = tasks.length
-    const completedTasks = tasks.filter((t: any) => t.completed).length
-    const journalEntriesCount = journalEntries.length
+    const stats = {
+      total: achievements.length,
+      unlocked: userAchievements.length,
+      totalPoints: userAchievements.reduce((sum: number, ua: any) => sum + ua.achievement.points, 0),
+      completionRate: achievements.length > 0 ? Math.round((userAchievements.length / achievements.length) * 100) : 0
+    }
 
-    // Définir les accomplissements
-    const achievements = [
-      {
-        id: 'first-goal',
-        title: 'Premier objectif',
-        description: 'Créez votre premier objectif',
-        icon: 'target',
-        progress: Math.min(totalGoals, 1),
-        maxProgress: 1,
-        unlocked: totalGoals >= 1,
-        category: 'goals' as const
-      },
-      {
-        id: 'goal-master',
-        title: 'Maître des objectifs',
-        description: 'Terminez 5 objectifs',
-        icon: 'trophy',
-        progress: Math.min(completedGoals, 5),
-        maxProgress: 5,
-        unlocked: completedGoals >= 5,
-        category: 'goals' as const
-      },
-      {
-        id: 'task-completer',
-        title: 'Accomplisseur',
-        description: 'Terminez 10 tâches',
-        icon: 'checkCircle',
-        progress: Math.min(completedTasks, 10),
-        maxProgress: 10,
-        unlocked: completedTasks >= 10,
-        category: 'tasks' as const
-      },
-      {
-        id: 'task-master',
-        title: 'Maître des tâches',
-        description: 'Terminez 50 tâches',
-        icon: 'star',
-        progress: Math.min(completedTasks, 50),
-        maxProgress: 50,
-        unlocked: completedTasks >= 50,
-        category: 'tasks' as const
-      },
-      {
-        id: 'journal-writer',
-        title: 'Écrivain',
-        description: 'Écrivez 5 entrées de journal',
-        icon: 'bookOpen',
-        progress: Math.min(journalEntriesCount, 5),
-        maxProgress: 5,
-        unlocked: journalEntriesCount >= 5,
-        category: 'journal' as const
-      },
-      {
-        id: 'journal-master',
-        title: 'Maître du journal',
-        description: 'Écrivez 20 entrées de journal',
-        icon: 'heart',
-        progress: Math.min(journalEntriesCount, 20),
-        maxProgress: 20,
-        unlocked: journalEntriesCount >= 20,
-        category: 'journal' as const
-      },
-      {
-        id: 'streak-7',
-        title: 'Série de 7 jours',
-        description: 'Maintenez une série de 7 jours consécutifs',
-        icon: 'zap',
-        progress: Math.min(completedTasks, 7),
-        maxProgress: 7,
-        unlocked: completedTasks >= 7,
-        category: 'streak' as const
-      },
-      {
-        id: 'streak-30',
-        title: 'Série de 30 jours',
-        description: 'Maintenez une série de 30 jours consécutifs',
-        icon: 'trendingUp',
-        progress: Math.min(completedTasks, 30),
-        maxProgress: 30,
-        unlocked: completedTasks >= 30,
-        category: 'streak' as const
-      },
-      {
-        id: 'early-adopter',
-        title: 'Adopteur précoce',
-        description: 'Utilisez l\'application pendant 7 jours',
-        icon: 'award',
-        progress: Math.min(completedTasks, 7),
-        maxProgress: 7,
-        unlocked: completedTasks >= 7,
-        category: 'special' as const
-      },
-      {
-        id: 'dedicated-user',
-        title: 'Utilisateur dévoué',
-        description: 'Utilisez l\'application pendant 30 jours',
-        icon: 'trophy',
-        progress: Math.min(completedTasks, 30),
-        maxProgress: 30,
-        unlocked: completedTasks >= 30,
-        category: 'special' as const
-      }
-    ]
+    return NextResponse.json({
+      achievements: filteredAchievements,
+      stats
+    })
 
-    return NextResponse.json({ achievements })
   } catch (error) {
-    console.error('Erreur lors du calcul des accomplissements:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('Erreur lors du chargement des achievements:', error)
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Vérifier l'authentification
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
+    }
+
+    const { achievementId } = await request.json()
+
+    if (!achievementId) {
+      return NextResponse.json({ error: 'ID d\'achievement requis' }, { status: 400 })
+    }
+
+    // Vérifier si l'achievement existe
+    const achievement = await prisma.achievement.findUnique({
+      where: { id: achievementId }
+    })
+
+    if (!achievement) {
+      return NextResponse.json({ error: 'Achievement non trouvé' }, { status: 404 })
+    }
+
+    // Vérifier si l'utilisateur a déjà cet achievement
+    const existingUserAchievement = await prisma.userAchievement.findUnique({
+      where: {
+        userId_achievementId: {
+          userId: decoded.userId,
+          achievementId
+        }
+      }
+    })
+
+    if (existingUserAchievement) {
+      return NextResponse.json({ error: 'Achievement déjà débloqué' }, { status: 400 })
+    }
+
+    // Débloquer l'achievement
+    const userAchievement = await prisma.userAchievement.create({
+      data: {
+        userId: decoded.userId,
+        achievementId,
+        progress: 100
+      },
+      include: { achievement: true }
+    })
+
+    // Créer une notification
+    await prisma.notification.create({
+      data: {
+        title: `Achievement débloqué : ${achievement.name}`,
+        message: achievement.description,
+        type: 'achievement',
+        userId: decoded.userId
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      achievement: {
+        id: userAchievement.id,
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+        category: achievement.category,
+        rarity: achievement.rarity,
+        points: achievement.points,
+        unlockedAt: userAchievement.unlockedAt
+      }
+    })
+
+  } catch (error) {
+    console.error('Erreur lors du déblocage de l\'achievement:', error)
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
   }
 } 

@@ -1,140 +1,186 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    // Vérifier l'authentification
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
     }
 
-    const userId = await verifyToken(token)
-    if (!userId) {
+    const decoded = verifyToken(token)
+    if (!decoded) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const page = parseInt(searchParams.get('page') || '1')
+    const unreadOnly = searchParams.get('unread') === 'true'
 
+    // Construire la requête
+    const where = {
+      userId: decoded.userId,
+      ...(unreadOnly && { read: false })
+    }
+
+    // Récupérer les notifications
     const notifications = await prisma.notification.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
-      skip: offset,
+      skip: (page - 1) * limit,
       include: {
         goal: {
-          select: {
-            id: true,
-            title: true
-          }
+          select: { id: true, title: true }
         },
         task: {
-          select: {
-            id: true,
-            title: true
-          }
+          select: { id: true, title: true }
         }
       }
     })
 
-    const total = await prisma.notification.count({
-      where: { userId }
-    })
-
+    // Compter le total
+    const total = await prisma.notification.count({ where })
     const unreadCount = await prisma.notification.count({
-      where: { 
-        userId,
-        read: false
-      }
+      where: { userId: decoded.userId, read: false }
     })
 
     return NextResponse.json({
-      notifications,
+      notifications: notifications.map(notif => ({
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: notif.type,
+        read: notif.read,
+        createdAt: notif.createdAt.toISOString(),
+        goal: notif.goal,
+        task: notif.task
+      })),
       total,
       unreadCount,
-      hasMore: offset + limit < total
+      hasMore: total > page * limit
     })
+
   } catch (error) {
-    console.error('Erreur lors de la récupération des notifications:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('Erreur lors du chargement des notifications:', error)
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Vérifier l'authentification
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
     }
 
-    const userId = await verifyToken(token)
-    if (!userId) {
+    const decoded = verifyToken(token)
+    if (!decoded) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { title, message, type, goalId, taskId } = body
+    const { title, message, type, goalId, taskId } = await request.json()
 
     if (!title || !message || !type) {
       return NextResponse.json({ error: 'Titre, message et type requis' }, { status: 400 })
     }
 
+    // Créer la notification
     const notification = await prisma.notification.create({
       data: {
         title,
         message,
         type,
-        userId,
+        userId: decoded.userId,
         goalId: goalId || null,
-        taskId: taskId || null
+        taskId: taskId || null,
+        read: false
       }
     })
 
-    return NextResponse.json(notification)
+    return NextResponse.json({
+      success: true,
+      notification: {
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        read: notification.read,
+        createdAt: notification.createdAt.toISOString()
+      }
+    })
+
   } catch (error) {
     console.error('Erreur lors de la création de la notification:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
+    // Vérifier l'authentification
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
     }
 
-    const userId = await verifyToken(token)
-    if (!userId) {
+    const decoded = verifyToken(token)
+    if (!decoded) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { action, notificationIds } = body
+    const { action, notificationIds } = await request.json()
 
-    if (action === 'markAllRead') {
-      await prisma.notification.updateMany({
-        where: { 
-          userId,
-          read: false
-        },
-        data: { read: true }
-      })
-    } else if (action === 'markRead' && notificationIds) {
-      await prisma.notification.updateMany({
-        where: { 
-          id: { in: notificationIds },
-          userId
-        },
-        data: { read: true }
-      })
+    if (!action) {
+      return NextResponse.json({ error: 'Action requise' }, { status: 400 })
     }
 
-    return NextResponse.json({ message: 'Notifications mises à jour' })
+    switch (action) {
+      case 'markRead':
+        if (!notificationIds || !Array.isArray(notificationIds)) {
+          return NextResponse.json({ error: 'IDs de notifications requis' }, { status: 400 })
+        }
+
+        await prisma.notification.updateMany({
+          where: {
+            id: { in: notificationIds },
+            userId: decoded.userId
+          },
+          data: { read: true }
+        })
+
+        return NextResponse.json({ success: true })
+
+      case 'markAllRead':
+        await prisma.notification.updateMany({
+          where: {
+            userId: decoded.userId,
+            read: false
+          },
+          data: { read: true }
+        })
+
+        return NextResponse.json({ success: true })
+
+      default:
+        return NextResponse.json({ error: 'Action non reconnue' }, { status: 400 })
+    }
+
   } catch (error) {
     console.error('Erreur lors de la mise à jour des notifications:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
   }
 } 

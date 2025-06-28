@@ -30,6 +30,7 @@ model User {
   tasks     Task[]
   notifications Notification[]
   chatMessages ChatMessage[]
+  userAchievements UserAchievement[]
 
   @@map("users")
 }
@@ -121,4 +122,36 @@ model ChatMessage {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("chat_messages")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String   // Nom de l'icône (emoji ou nom de classe)
+  category    String   // goals, tasks, journal, streak, etc.
+  criteria    Json     // Critères pour débloquer l'achievement
+  rarity      String   @default("common") // common, rare, epic, legendary
+  points      Int      @default(10) // Points gagnés
+  createdAt   DateTime @default(now())
+
+  // Relations
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  unlockedAt    DateTime @default(now())
+  progress      Int      @default(0) // Progression vers l'achievement (0-100)
+
+  // Relations
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
 }

@@ -25,22 +25,17 @@ import {
   MoreHorizontal,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import NotificationsComponent from "@/components/notifications"
 
 interface JournalEntry {
   id: string
-  title: string
+  title: string | null
   content: string
-  mood: "excellent" | "bon" | "neutre" | "difficile"
-  date: string
-  tags: string[]
-  wordCount: number
-}
-
-interface JournalStats {
-  totalEntries: number
-  thisWeek: number
-  totalWords: number
-  averageMood: number
+  mood: string | null
+  tags: string[] | null
+  createdAt: string
 }
 
 export default function JournalPage() {
@@ -49,34 +44,27 @@ export default function JournalPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [entries, setEntries] = useState<JournalEntry[]>([])
-  const [stats, setStats] = useState<JournalStats>({
-    totalEntries: 0,
-    thisWeek: 0,
-    totalWords: 0,
-    averageMood: 0
-  })
   const [newEntry, setNewEntry] = useState({
     title: "",
     content: "",
-    mood: "neutre" as const,
+    mood: "",
+    tags: ""
   })
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchJournalData()
-  }, [searchTerm])
+    fetchEntries()
+  }, [])
 
-  const fetchJournalData = async () => {
+  const fetchEntries = async () => {
     try {
-      const url = searchTerm ? `/api/journal?search=${encodeURIComponent(searchTerm)}` : '/api/journal'
-      const response = await fetch(url)
-      
+      const response = await fetch('/api/journal')
       if (!response.ok) {
-        throw new Error('Erreur lors du chargement des données')
+        throw new Error('Erreur lors du chargement du journal')
       }
-      
       const data = await response.json()
       setEntries(data.entries)
-      setStats(data.stats)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Erreur inconnue')
     } finally {
@@ -84,8 +72,9 @@ export default function JournalPage() {
     }
   }
 
-  const handleSaveEntry = async () => {
-    if (!newEntry.title.trim() || !newEntry.content.trim()) return
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
 
     try {
       const response = await fetch('/api/journal', {
@@ -93,23 +82,30 @@ export default function JournalPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newEntry),
+        body: JSON.stringify({
+          title: newEntry.title || null,
+          content: newEntry.content,
+          mood: newEntry.mood || null,
+          tags: newEntry.tags ? newEntry.tags.split(',').map(tag => tag.trim()) : null
+        }),
       })
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la sauvegarde')
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la création')
       }
 
-      const data = await response.json()
-      setEntries([data.entry, ...entries])
-      setNewEntry({ title: "", content: "", mood: "neutre" })
-      setIsWriting(false)
+      // Réinitialiser le formulaire et fermer le dialogue
+      setNewEntry({ title: "", content: "", mood: "", tags: "" })
+      setIsDialogOpen(false)
       
-      // Recharger les statistiques
-      fetchJournalData()
+      // Recharger les entrées
+      fetchEntries()
+      
     } catch (error) {
-      console.error('Erreur:', error)
-      setError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde')
+      setError(error instanceof Error ? error.message : 'Erreur lors de la création')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -126,49 +122,70 @@ export default function JournalPage() {
       }
 
       setEntries(entries.filter(entry => entry.id !== id))
-      fetchJournalData() // Recharger les statistiques
+      fetchEntries() // Recharger les statistiques
     } catch (error) {
       console.error('Erreur:', error)
       setError(error instanceof Error ? error.message : 'Erreur lors de la suppression')
     }
   }
 
-  const getMoodIcon = (mood: string) => {
+  const getMoodIcon = (mood: string | null) => {
     switch (mood) {
-      case "excellent":
-        return <Smile className="w-5 h-5 text-green-600" />
-      case "bon":
-        return <Smile className="w-5 h-5 text-blue-600" />
-      case "neutre":
-        return <Meh className="w-5 h-5 text-gray-600" />
-      case "difficile":
-        return <Frown className="w-5 h-5 text-red-600" />
-      default:
-        return <Meh className="w-5 h-5 text-gray-600" />
+      case 'happy': return '😊'
+      case 'sad': return '😢'
+      case 'excited': return '🤩'
+      case 'calm': return '😌'
+      case 'stressed': return '😰'
+      case 'grateful': return '🙏'
+      case 'motivated': return '💪'
+      case 'tired': return '😴'
+      default: return '😐'
     }
   }
 
-  const getMoodColor = (mood: string) => {
+  const getMoodLabel = (mood: string | null) => {
     switch (mood) {
-      case "excellent":
-        return "bg-green-100 text-green-800"
-      case "bon":
-        return "bg-blue-100 text-blue-800"
-      case "neutre":
-        return "bg-gray-100 text-gray-800"
-      case "difficile":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+      case 'happy': return 'Heureux'
+      case 'sad': return 'Triste'
+      case 'excited': return 'Excité'
+      case 'calm': return 'Calme'
+      case 'stressed': return 'Stressé'
+      case 'grateful': return 'Reconnaissant'
+      case 'motivated': return 'Motivé'
+      case 'tired': return 'Fatigué'
+      default: return 'Neutre'
     }
   }
 
-  const filteredEntries = entries.filter(
-    (entry) =>
-      entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+  const filteredEntries = entries.filter(entry => {
+    const matchesSearch = entry.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         entry.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         entry.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    return matchesSearch
+  })
+
+  const stats = {
+    total: entries.length,
+    thisWeek: entries.filter(e => {
+      const entryDate = new Date(e.createdAt)
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      return entryDate >= weekAgo
+    }).length,
+    averageMood: entries.length > 0 ? 
+      entries.filter(e => e.mood).length / entries.length * 100 : 0
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement du journal...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -202,9 +219,7 @@ export default function JournalPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="w-5 h-5" />
-            </Button>
+            <NotificationsComponent />
             <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
             </Button>
@@ -226,131 +241,139 @@ export default function JournalPage() {
             </h1>
             <p className="text-gray-600 mt-1">Exprimez vos pensées, suivez votre évolution personnelle</p>
           </div>
-          <Button
-            onClick={() => setIsWriting(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nouvelle entrée
-          </Button>
-        </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Nouvelle entrée
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Nouvelle entrée de journal</DialogTitle>
+                <DialogDescription>
+                  Prenez le temps de réfléchir à votre journée et notez vos pensées
+                </DialogDescription>
+              </DialogHeader>
+              
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
-            <Button onClick={() => setError("")} variant="outline" size="sm" className="mt-2">
-              Fermer
-            </Button>
-          </div>
-        )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Titre (optionnel)</label>
+                  <Input
+                    placeholder="Titre de votre entrée..."
+                    value={newEntry.title}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Contenu *</label>
+                  <Textarea
+                    placeholder="Comment vous sentez-vous aujourd'hui ? Qu'avez-vous accompli ? Quelles sont vos réflexions ?"
+                    value={newEntry.content}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, content: e.target.value }))}
+                    rows={6}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Humeur</label>
+                    <Select value={newEntry.mood} onValueChange={(value) => setNewEntry(prev => ({ ...prev, mood: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une humeur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="happy">😊 Heureux</SelectItem>
+                        <SelectItem value="sad">😢 Triste</SelectItem>
+                        <SelectItem value="excited">🤩 Excité</SelectItem>
+                        <SelectItem value="calm">😌 Calme</SelectItem>
+                        <SelectItem value="stressed">😰 Stressé</SelectItem>
+                        <SelectItem value="grateful">🙏 Reconnaissant</SelectItem>
+                        <SelectItem value="motivated">💪 Motivé</SelectItem>
+                        <SelectItem value="tired">😴 Fatigué</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tags (optionnel)</label>
+                    <Input
+                      placeholder="travail, famille, sport..."
+                      value={newEntry.tags}
+                      onChange={(e) => setNewEntry(prev => ({ ...prev, tags: e.target.value }))}
+                    />
+                    <p className="text-xs text-gray-500">Séparez les tags par des virgules</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    className="flex-1"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    disabled={isSubmitting || !newEntry.content.trim()}
+                  >
+                    {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Entrées totales</CardTitle>
-              <BookOpen className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalEntries}</div>
-              <p className="text-xs text-muted-foreground">depuis le début</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total entrées</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                </div>
+                <BookOpen className="w-8 h-8 text-blue-600" />
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cette semaine</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.thisWeek}</div>
-              <p className="text-xs text-muted-foreground">nouvelles entrées</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Cette semaine</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.thisWeek}</p>
+                </div>
+                <Calendar className="w-8 h-8 text-green-600" />
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Mots écrits</CardTitle>
-              <Edit className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalWords}</div>
-              <p className="text-xs text-muted-foreground">au total</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Humeur positive</CardTitle>
-              <Heart className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{Math.round(stats.averageMood)}%</div>
-              <p className="text-xs text-muted-foreground">du temps</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Humeur suivie</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(stats.averageMood)}%</p>
+                </div>
+                <Heart className="w-8 h-8 text-purple-600" />
+              </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Writing Interface */}
-        {isWriting && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Nouvelle entrée de journal</CardTitle>
-              <CardDescription>Prenez le temps d'exprimer vos pensées et réflexions du jour</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Input
-                  placeholder="Titre de votre entrée..."
-                  value={newEntry.title}
-                  onChange={(e) => setNewEntry((prev) => ({ ...prev, title: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Textarea
-                  placeholder="Écrivez vos pensées, réflexions, ou ce qui vous passe par la tête..."
-                  value={newEntry.content}
-                  onChange={(e) => setNewEntry((prev) => ({ ...prev, content: e.target.value }))}
-                  className="min-h-[200px]"
-                />
-              </div>
-
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium">Comment vous sentez-vous ?</span>
-                <div className="flex gap-2">
-                  {[
-                    { value: "excellent", icon: Smile, color: "text-green-600" },
-                    { value: "bon", icon: Smile, color: "text-blue-600" },
-                    { value: "neutre", icon: Meh, color: "text-gray-600" },
-                    { value: "difficile", icon: Frown, color: "text-red-600" },
-                  ].map(({ value, icon: Icon, color }) => (
-                    <Button
-                      key={value}
-                      variant={newEntry.mood === value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setNewEntry((prev) => ({ ...prev, mood: value as any }))}
-                    >
-                      <Icon className={`w-4 h-4 ${color}`} />
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSaveEntry}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  Sauvegarder
-                </Button>
-                <Button variant="outline" onClick={() => setIsWriting(false)}>
-                  Annuler
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Search */}
         <Card className="mb-6">
@@ -367,62 +390,62 @@ export default function JournalPage() {
           </CardContent>
         </Card>
 
-        {/* Journal Entries */}
-        <div className="space-y-6">
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Chargement de vos entrées...</p>
-            </div>
-          ) : entries.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {searchTerm ? "Aucune entrée trouvée" : "Votre journal est vide"}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {searchTerm
-                    ? "Essayez avec d'autres mots-clés"
-                    : "Commencez par écrire votre première entrée de journal"}
-                </p>
-                {!searchTerm && (
-                  <Button
-                    onClick={() => setIsWriting(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Première entrée
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            filteredEntries.map((entry) => (
-              <Card key={entry.id} className="hover:shadow-md transition-shadow">
+        {/* Entries List */}
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchEntries}>Réessayer</Button>
+          </div>
+        )}
+
+        {!error && filteredEntries.length === 0 && (
+          <Card className="text-center py-12">
+            <CardContent>
+              <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucune entrée trouvée</h3>
+              <p className="text-gray-600 mb-6">
+                {entries.length === 0 
+                  ? "Vous n'avez pas encore écrit dans votre journal. Commencez par votre première entrée !"
+                  : "Aucune entrée ne correspond à votre recherche."
+                }
+              </p>
+              <Button 
+                onClick={() => setIsDialogOpen(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Écrire ma première entrée
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!error && filteredEntries.length > 0 && (
+          <div className="space-y-6">
+            {filteredEntries.map((entry) => (
+              <Card key={entry.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-lg">{entry.title}</CardTitle>
-                        <Badge className={getMoodColor(entry.mood)}>
-                          <span className="flex items-center gap-1">
-                            {getMoodIcon(entry.mood)}
-                            {entry.mood}
-                          </span>
-                        </Badge>
-                      </div>
+                      {entry.title && (
+                        <CardTitle className="text-lg mb-2">{entry.title}</CardTitle>
+                      )}
                       <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          {new Date(entry.date).toLocaleDateString("fr-FR", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </span>
-                        <span>{entry.wordCount} mots</span>
+                          <span>{new Date(entry.createdAt).toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}</span>
+                        </div>
+                        {entry.mood && (
+                          <div className="flex items-center gap-2">
+                            <span>{getMoodIcon(entry.mood)}</span>
+                            <span>{getMoodLabel(entry.mood)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <DropdownMenu>
@@ -445,21 +468,26 @@ export default function JournalPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 leading-relaxed mb-4">{entry.content}</p>
-                  {entry.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {entry.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          #{tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <div className="space-y-4">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {entry.content}
+                    </p>
+                    
+                    {entry.tags && entry.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.tags.map((tag, index) => (
+                          <Badge key={index} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

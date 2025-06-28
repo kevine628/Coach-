@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createUser, findUserByEmail } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
+    const { name, email, phone, password } = await request.json()
 
-    // Validation
-    if (!email || !password) {
+    // Validation des données
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Email et mot de passe requis' },
+        { error: 'Nom, email et mot de passe requis' },
         { status: 400 }
       )
     }
 
+    // Validation du format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Format d\'email invalide' },
+        { status: 400 }
+      )
+    }
+
+    // Validation du mot de passe
     if (password.length < 6) {
       return NextResponse.json(
         { error: 'Le mot de passe doit contenir au moins 6 caractères' },
@@ -21,7 +32,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier si l'utilisateur existe déjà
-    const existingUser = await findUserByEmail(email)
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
+
     if (existingUser) {
       return NextResponse.json(
         { error: 'Un compte avec cet email existe déjà' },
@@ -29,16 +43,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Créer l'utilisateur
-    const user = await createUser(email, password, name)
+    // Hacher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 12)
 
+    // Créer l'utilisateur
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        phone: phone || null,
+        password: hashedPassword,
+        preferences: {
+          theme: 'light',
+          notifications: {
+            email: true,
+            push: false
+          },
+          language: 'fr'
+        }
+      }
+    })
+
+    // Retourner la réponse sans le mot de passe
     return NextResponse.json(
-      { 
+      {
         message: 'Compte créé avec succès',
         user: {
           id: user.id,
-          email: user.email,
-          name: user.name
+          name: user.name,
+          email: user.email
         }
       },
       { status: 201 }

@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
+import NotificationsComponent from "@/components/notifications"
+import AchievementsWidget from "@/components/achievements-widget"
 import {
   Brain,
   Target,
@@ -22,6 +24,7 @@ import {
   Sparkles,
   BarChart3,
   MessageSquare,
+  Trophy,
 } from "lucide-react"
 
 interface DashboardData {
@@ -103,13 +106,25 @@ export default function TableauDeBordPage() {
 
   const createTestData = async () => {
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('Token manquant')
+        return
+      }
+
       const response = await fetch('/api/seed', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       if (!response.ok) {
         throw new Error('Erreur lors de la création des données de test')
       }
+
+      const result = await response.json()
+      console.log('Données de test créées:', result)
 
       // Recharger les données
       fetchDashboardData()
@@ -176,11 +191,15 @@ export default function TableauDeBordPage() {
               <Link href="/assistant" className="text-gray-600 hover:text-gray-900">
                 Assistant IA
               </Link>
+              <Link href="/achievements" className="text-gray-600 hover:text-gray-900">
+                Achievements
+              </Link>
             </nav>
           </div>
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
+            <NotificationsComponent />
             <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
             </Button>
@@ -253,6 +272,18 @@ export default function TableauDeBordPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Achievements</p>
+                  <p className="text-2xl font-bold text-gray-900">0/15</p>
+                </div>
+                <Trophy className="w-8 h-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quick Actions */}
@@ -290,7 +321,7 @@ export default function TableauDeBordPage() {
         </div>
 
         {/* Goals and Tasks */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Goals */}
           <Card>
             <CardHeader>
@@ -380,6 +411,11 @@ export default function TableauDeBordPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Achievements Widget */}
+          <div className="lg:col-span-1">
+            <AchievementsWidget />
+          </div>
         </div>
 
         {/* AI Suggestions */}

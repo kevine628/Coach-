@@ -1,39 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyToken } from '@/lib/auth'
+import { getAuthenticatedUser } from '@/lib/auth'
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 })
-    }
-
-    const userId = await verifyToken(token)
-    if (!userId) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
+    const user = await getAuthenticatedUser(request)
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
     const preferences = await request.json()
 
     // Validation des préférences
     if (!preferences || typeof preferences !== 'object') {
-      return NextResponse.json({ error: 'Préférences invalides' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Préférences invalides' },
+        { status: 400 }
+      )
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: {
-        preferences
-      },
-      select: {
-        preferences: true
+        preferences: preferences
       }
     })
 
-    return NextResponse.json(updatedUser.preferences)
+    return NextResponse.json({
+      message: 'Préférences mises à jour avec succès',
+      preferences: updatedUser.preferences
+    })
+
   } catch (error) {
     console.error('Erreur lors de la mise à jour des préférences:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    )
   }
 } 

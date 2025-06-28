@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import NotificationsComponent from "@/components/notifications"
 import {
   Brain,
   Target,
@@ -23,6 +25,7 @@ import {
   Bell,
   Settings,
   Loader2,
+  TrendingUp,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
@@ -33,20 +36,20 @@ interface Goal {
   description: string | null
   progress: number
   targetDate: string | null
-  status: "en_cours" | "termine" | "en_pause"
+  status: string
   category: string
-  priority: "haute" | "moyenne" | "basse"
+  priority: string
   createdAt: string
-  updatedAt: string
 }
 
 export default function ObjectifsPage() {
   const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterCategory, setFilterCategory] = useState("tous")
-  const [objectives, setObjectives] = useState<Goal[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [categoryFilter, setCategoryFilter] = useState("all")
 
   useEffect(() => {
     fetchGoals()
@@ -54,33 +57,14 @@ export default function ObjectifsPage() {
 
   const fetchGoals = async () => {
     try {
-      setLoading(true)
-      const token = localStorage.getItem("token")
-      
-      if (!token) {
-        setError("Vous devez être connecté")
-        return
-      }
-
-      const response = await fetch("/api/goals", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-
+      const response = await fetch('/api/goals')
       if (!response.ok) {
-        if (response.status === 401) {
-          setError("Session expirée")
-          return
-        }
-        throw new Error("Erreur lors de la récupération des objectifs")
+        throw new Error('Erreur lors du chargement des objectifs')
       }
-
       const data = await response.json()
-      setObjectives(data)
+      setGoals(data.goals)
     } catch (error) {
-      console.error("Erreur:", error)
-      setError("Erreur lors du chargement des objectifs")
+      setError(error instanceof Error ? error.message : 'Erreur inconnue')
     } finally {
       setLoading(false)
     }
@@ -150,7 +134,7 @@ export default function ObjectifsPage() {
         throw new Error("Erreur lors de la mise à jour")
       }
 
-      setObjectives(prev => 
+      setGoals(prev => 
         prev.map(goal => 
           goal.id === goalId 
             ? { ...goal, progress: newProgress }
@@ -172,72 +156,55 @@ export default function ObjectifsPage() {
     }
   }
 
-  const categories = ["tous", "Général", "Santé", "Loisirs", "Culture", "Apprentissage", "Bien-être", "Travail", "Finance", "Relations"]
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "en_cours":
-        return "bg-blue-100 text-blue-800"
-      case "termine":
-        return "bg-green-100 text-green-800"
-      case "en_pause":
-        return "bg-yellow-100 text-yellow-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+      case 'en_cours': return 'bg-blue-100 text-blue-800'
+      case 'termine': return 'bg-green-100 text-green-800'
+      case 'en_pause': return 'bg-yellow-100 text-yellow-800'
+      default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "haute":
-        return "bg-red-100 text-red-800"
-      case "moyenne":
-        return "bg-orange-100 text-orange-800"
-      case "basse":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+      case 'haute': return 'destructive'
+      case 'moyenne': return 'secondary'
+      case 'basse': return 'outline'
+      default: return 'secondary'
     }
   }
 
-  const filteredObjectives = objectives.filter((objective) => {
-    const matchesSearch =
-      objective.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (objective.description && objective.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesCategory = filterCategory === "tous" || objective.category === filterCategory
-    return matchesSearch && matchesCategory
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'en_cours': return 'En cours'
+      case 'termine': return 'Terminé'
+      case 'en_pause': return 'En pause'
+      default: return status
+    }
+  }
+
+  const filteredGoals = goals.filter(goal => {
+    const matchesSearch = goal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (goal.description && goal.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesStatus = statusFilter === 'all' || goal.status === statusFilter
+    const matchesCategory = categoryFilter === 'all' || goal.category === categoryFilter
+    
+    return matchesSearch && matchesStatus && matchesCategory
   })
 
   const stats = {
-    total: objectives.length,
-    enCours: objectives.filter((obj) => obj.status === "en_cours").length,
-    termines: objectives.filter((obj) => obj.status === "termine").length,
-    progressMoyen: objectives.length > 0 
-      ? Math.round(objectives.reduce((acc, obj) => acc + obj.progress, 0) / objectives.length)
-      : 0,
+    total: goals.length,
+    active: goals.filter(g => g.status === 'en_cours').length,
+    completed: goals.filter(g => g.status === 'termine').length,
+    averageProgress: goals.length > 0 ? Math.round(goals.reduce((acc, g) => acc + g.progress, 0) / goals.length) : 0
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Chargement des objectifs...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de chargement</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={fetchGoals} variant="outline">
-            Réessayer
-          </Button>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement des objectifs...</p>
         </div>
       </div>
     )
@@ -275,9 +242,7 @@ export default function ObjectifsPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="w-5 h-5" />
-            </Button>
+            <NotificationsComponent />
             <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
             </Button>
@@ -289,15 +254,13 @@ export default function ObjectifsPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Header Section */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Target className="w-8 h-8 text-blue-600" />
-              Mes Objectifs
-            </h1>
-            <p className="text-gray-600 mt-1">Suivez et gérez tous vos objectifs personnels et professionnels</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Objectifs</h1>
+            <p className="text-gray-600">Gérez vos objectifs et suivez votre progression</p>
           </div>
           <Link href="/objectifs/nouveau">
             <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
@@ -310,53 +273,57 @@ export default function ObjectifsPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-              <Target className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">objectifs créés</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                </div>
+                <Target className="w-8 h-8 text-blue-600" />
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En cours</CardTitle>
-              <Clock className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.enCours}</div>
-              <p className="text-xs text-muted-foreground">objectifs actifs</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Actifs</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-green-600" />
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Terminés</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.termines}</div>
-              <p className="text-xs text-muted-foreground">objectifs réalisés</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Terminés</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
+                </div>
+                <Calendar className="w-8 h-8 text-purple-600" />
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Progrès moyen</CardTitle>
-              <Target className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.progressMoyen}%</div>
-              <p className="text-xs text-muted-foreground">de réalisation</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Progression moy.</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.averageProgress}%</p>
+                </div>
+                <Progress value={stats.averageProgress} className="w-8 h-8" />
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
+        <Card className="mb-8">
+          <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
@@ -369,135 +336,120 @@ export default function ObjectifsPage() {
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Filter className="w-4 h-4 mr-2" />
-                      {filterCategory === "tous" ? "Toutes catégories" : filterCategory}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {categories.map((category) => (
-                      <DropdownMenuItem key={category} onClick={() => setFilterCategory(category)}>
-                        {category === "tous" ? "Toutes catégories" : category}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="en_cours">En cours</SelectItem>
+                  <SelectItem value="termine">Terminé</SelectItem>
+                  <SelectItem value="en_pause">En pause</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les catégories</SelectItem>
+                  <SelectItem value="Général">Général</SelectItem>
+                  <SelectItem value="Santé">Santé</SelectItem>
+                  <SelectItem value="Travail">Travail</SelectItem>
+                  <SelectItem value="Personnel">Personnel</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Objectives List */}
-        <div className="grid gap-6">
-          {filteredObjectives.map((objective) => (
-            <Card key={objective.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-lg">{objective.title}</CardTitle>
-                      <Badge className={getStatusColor(objective.status)}>
-                        {objective.status === "en_cours"
-                          ? "En cours"
-                          : objective.status === "termine"
-                            ? "Terminé"
-                            : "En pause"}
-                      </Badge>
-                      <Badge variant="outline" className={getPriorityColor(objective.priority)}>
-                        Priorité {objective.priority}
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-sm">{objective.description}</CardDescription>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Modifier
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Programmer rappel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-red-600"
-                        onClick={() => handleDeleteGoal(objective.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Progrès</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">{objective.progress}%</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUpdateProgress(objective.id, Math.min(100, objective.progress + 10))}
-                          disabled={objective.progress >= 100}
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-                    <Progress value={objective.progress} className="h-2" />
-                  </div>
+        {/* Goals List */}
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchGoals}>Réessayer</Button>
+          </div>
+        )}
 
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <div className="flex items-center gap-4">
-                      {objective.targetDate && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Échéance : {new Date(objective.targetDate).toLocaleDateString("fr-FR")}
-                        </span>
-                      )}
-                      <Badge variant="secondary">{objective.category}</Badge>
-                    </div>
-                    <span>Créé le {new Date(objective.createdAt).toLocaleDateString("fr-FR")}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredObjectives.length === 0 && (
+        {!error && filteredGoals.length === 0 && (
           <Card className="text-center py-12">
             <CardContent>
-              <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun objectif trouvé</h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm || filterCategory !== "tous"
-                  ? "Essayez de modifier vos critères de recherche"
-                  : "Commencez par créer votre premier objectif"}
+              <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun objectif trouvé</h3>
+              <p className="text-gray-600 mb-6">
+                {goals.length === 0 
+                  ? "Vous n'avez pas encore créé d'objectifs. Commencez par en créer un !"
+                  : "Aucun objectif ne correspond à vos critères de recherche."
+                }
               </p>
-              {!searchTerm && filterCategory === "tous" && (
-                <Link href="/objectifs/nouveau">
-                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Créer un objectif
-                  </Button>
-                </Link>
-              )}
+              <Link href="/objectifs/nouveau">
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer mon premier objectif
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         )}
-      </div>
+
+        {!error && filteredGoals.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredGoals.map((goal) => (
+              <Card key={goal.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg mb-2">{goal.title}</CardTitle>
+                      {goal.description && (
+                        <CardDescription className="mb-3">{goal.description}</CardDescription>
+                      )}
+                    </div>
+                    <Badge className={getStatusColor(goal.status)}>
+                      {getStatusLabel(goal.status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Progression</span>
+                        <span>{goal.progress}%</span>
+                      </div>
+                      <Progress value={goal.progress} className="h-2" />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <Badge variant={getPriorityColor(goal.priority)}>
+                        {goal.priority}
+                      </Badge>
+                      <span className="text-sm text-gray-600">{goal.category}</span>
+                    </div>
+
+                    {goal.targetDate && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>Échéance: {new Date(goal.targetDate).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1">
+                        Modifier
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        Voir détails
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   )
 }

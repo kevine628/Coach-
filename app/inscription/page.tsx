@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,47 +8,64 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Brain, Mail, Lock, Eye, EyeOff, User } from "lucide-react"
+import { Brain, Mail, Lock, Eye, EyeOff, User, Phone } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function InscriptionPage() {
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
+    phone: "",
     password: "",
-    confirmPassword: "",
+    confirmPassword: ""
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    setError("") // Effacer l'erreur quand l'utilisateur tape
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError("Le nom est requis")
+      return false
+    }
+    if (!formData.email.trim()) {
+      setError("L'email est requis")
+      return false
+    }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError("Format d'email invalide")
+      return false
+    }
+    if (formData.password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères")
+      return false
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas")
+      return false
+    }
+    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!acceptTerms) return
+    setError("")
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas")
-      return
-    }
-
-    if (formData.password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères")
+    if (!validateForm()) {
       return
     }
 
     setIsLoading(true)
-    setError("")
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -58,9 +74,10 @@ export default function InscriptionPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          name: formData.name,
           email: formData.email,
-          password: formData.password,
-          name: `${formData.firstName} ${formData.lastName}`.trim()
+          phone: formData.phone,
+          password: formData.password
         }),
       })
 
@@ -98,7 +115,7 @@ export default function InscriptionPage() {
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Créer votre compte</CardTitle>
-            <CardDescription>Commencez votre transformation personnelle dès aujourd'hui</CardDescription>
+            <CardDescription>Rejoignez CoachIA et commencez votre transformation personnelle</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
@@ -108,37 +125,20 @@ export default function InscriptionPage() {
             )}
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Prénom</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="firstName"
-                      type="text"
-                      placeholder="Jean"
-                      value={formData.firstName}
-                      onChange={(e) => handleInputChange("firstName", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Nom</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="lastName"
-                      type="text"
-                      placeholder="Dupont"
-                      value={formData.lastName}
-                      onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Nom complet</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="Votre nom complet"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="pl-10"
+                    required
+                  />
                 </div>
               </div>
 
@@ -148,12 +148,29 @@ export default function InscriptionPage() {
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="email"
+                    name="email"
                     type="email"
-                    placeholder="jean.dupont@email.com"
+                    placeholder="votre@email.com"
                     value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    onChange={handleInputChange}
                     className="pl-10"
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Téléphone (optionnel)</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+33 6 12 34 56 78"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="pl-10"
                   />
                 </div>
               </div>
@@ -164,13 +181,13 @@ export default function InscriptionPage() {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Minimum 6 caractères"
+                    placeholder="Au moins 6 caractères"
                     value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    onChange={handleInputChange}
                     className="pl-10 pr-10"
                     required
-                    minLength={6}
                   />
                   <button
                     type="button"
@@ -188,10 +205,11 @@ export default function InscriptionPage() {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="confirmPassword"
+                    name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Répétez votre mot de passe"
                     value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                    onChange={handleInputChange}
                     className="pl-10 pr-10"
                     required
                   />
@@ -205,24 +223,10 @@ export default function InscriptionPage() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox id="terms" checked={acceptTerms} onCheckedChange={setAcceptTerms} />
-                <Label htmlFor="terms" className="text-sm text-gray-600">
-                  J'accepte les{" "}
-                  <Link href="/conditions" className="text-blue-600 hover:underline">
-                    conditions d'utilisation
-                  </Link>{" "}
-                  et la{" "}
-                  <Link href="/confidentialite" className="text-blue-600 hover:underline">
-                    politique de confidentialité
-                  </Link>
-                </Label>
-              </div>
-
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                disabled={isLoading || !acceptTerms}
+                disabled={isLoading}
               >
                 {isLoading ? "Création du compte..." : "Créer mon compte"}
               </Button>
@@ -274,6 +278,17 @@ export default function InscriptionPage() {
               Déjà un compte ?{" "}
               <Link href="/connexion" className="text-blue-600 hover:underline font-medium">
                 Se connecter
+              </Link>
+            </div>
+
+            <div className="text-xs text-gray-500 text-center">
+              En créant un compte, vous acceptez nos{" "}
+              <Link href="/conditions" className="text-blue-600 hover:underline">
+                conditions d'utilisation
+              </Link>{" "}
+              et notre{" "}
+              <Link href="/confidentialite" className="text-blue-600 hover:underline">
+                politique de confidentialité
               </Link>
             </div>
           </CardContent>
