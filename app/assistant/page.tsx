@@ -38,10 +38,30 @@ export default function AssistantPage() {
   const [isTyping, setIsTyping] = useState(false)
 
   const quickActions = [
-    { icon: Target, label: "Objectifs", color: "bg-blue-100 text-blue-600" },
-    { icon: Heart, label: "Bien-être", color: "bg-red-100 text-red-600" },
-    { icon: Briefcase, label: "Travail", color: "bg-green-100 text-green-600" },
-    { icon: BookOpen, label: "Apprentissage", color: "bg-purple-100 text-purple-600" },
+    { 
+      icon: Target, 
+      label: "Plan Productivité", 
+      color: "bg-blue-100 text-blue-600",
+      action: "create_productivity_plan"
+    },
+    { 
+      icon: Heart, 
+      label: "Plan Bien-être", 
+      color: "bg-red-100 text-red-600",
+      action: "create_wellness_plan"
+    },
+    { 
+      icon: Briefcase, 
+      label: "Travail", 
+      color: "bg-green-100 text-green-600",
+      action: null
+    },
+    { 
+      icon: BookOpen, 
+      label: "Apprentissage", 
+      color: "bg-purple-100 text-purple-600",
+      action: null
+    },
   ]
 
   const handleSendMessage = async () => {
@@ -58,31 +78,92 @@ export default function AssistantPage() {
     setInputMessage("")
     setIsTyping(true)
 
-    // Simulation de réponse IA
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: inputMessage,
+          conversationHistory: messages
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'envoi du message')
+      }
+
+      const data = await response.json()
+
       const aiResponse: Message = {
         id: messages.length + 2,
-        content: generateAIResponse(inputMessage),
+        content: data.response,
         sender: "ai",
         timestamp: new Date(),
-        suggestions: ["En savoir plus", "Créer un plan d'action", "Programmer un rappel"],
+        suggestions: data.suggestions || ["En savoir plus", "Créer un plan d'action", "Programmer un rappel"],
       }
-      setMessages((prev) => [...prev, aiResponse])
-      setIsTyping(false)
-    }, 1500)
-  }
 
-  const generateAIResponse = (userInput: string): string => {
-    const responses = [
-      "C'est une excellente question ! Basé sur vos habitudes et objectifs actuels, je vous recommande de commencer par de petites étapes quotidiennes. Voulez-vous que je vous aide à créer un plan personnalisé ?",
-      "Je comprends votre préoccupation. D'après votre profil, voici quelques stratégies adaptées à votre situation française : prioriser l'équilibre vie-travail, intégrer des pauses déjeuner plus longues, et planifier du temps pour les loisirs.",
-      "Parfait ! Je vais vous aider à structurer cela. En France, il est important de respecter les rythmes naturels. Commençons par identifier vos moments les plus productifs de la journée.",
-    ]
-    return responses[Math.floor(Math.random() * responses.length)]
+      setMessages((prev) => [...prev, aiResponse])
+    } catch (error) {
+      console.error('Erreur:', error)
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        content: "Désolé, j'ai rencontré une erreur. Pouvez-vous réessayer ?",
+        sender: "ai",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputMessage(suggestion)
+  }
+
+  const handleQuickAction = async (action: string | null) => {
+    if (!action) return
+
+    setIsTyping(true)
+
+    try {
+      const response = await fetch('/api/assistant/actions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la création du plan')
+      }
+
+      const data = await response.json()
+
+      const aiResponse: Message = {
+        id: messages.length + 1,
+        content: `Parfait ! J'ai créé votre plan "${data.goal.title}" avec ${data.tasksCreated} tâches. Vous pouvez maintenant voir ces éléments dans votre tableau de bord et commencer à les utiliser. Voulez-vous que je vous aide à personnaliser ce plan ?`,
+        sender: "ai",
+        timestamp: new Date(),
+        suggestions: ["Personnaliser le plan", "Voir le tableau de bord", "Créer d'autres objectifs"],
+      }
+
+      setMessages((prev) => [...prev, aiResponse])
+    } catch (error) {
+      console.error('Erreur:', error)
+      const errorMessage: Message = {
+        id: messages.length + 1,
+        content: "Désolé, j'ai rencontré une erreur lors de la création du plan. Pouvez-vous réessayer ?",
+        sender: "ai",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   return (
@@ -147,12 +228,19 @@ export default function AssistantPage() {
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {quickActions.map((action, index) => (
-            <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
+            <Card 
+              key={index} 
+              className={`cursor-pointer hover:shadow-md transition-shadow ${action.action ? 'hover:bg-gray-50' : ''}`}
+              onClick={() => action.action && handleQuickAction(action.action)}
+            >
               <CardContent className="p-4 text-center">
                 <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mx-auto mb-2`}>
                   <action.icon className="w-6 h-6" />
                 </div>
                 <p className="text-sm font-medium">{action.label}</p>
+                {action.action && (
+                  <p className="text-xs text-gray-500 mt-1">Cliquez pour créer</p>
+                )}
               </CardContent>
             </Card>
           ))}
