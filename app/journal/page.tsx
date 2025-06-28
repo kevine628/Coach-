@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,7 +27,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface JournalEntry {
-  id: number
+  id: string
   title: string
   content: string
   mood: "excellent" | "bon" | "neutre" | "difficile"
@@ -36,57 +36,102 @@ interface JournalEntry {
   wordCount: number
 }
 
+interface JournalStats {
+  totalEntries: number
+  thisWeek: number
+  totalWords: number
+  averageMood: number
+}
+
 export default function JournalPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isWriting, setIsWriting] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [entries, setEntries] = useState<JournalEntry[]>([])
+  const [stats, setStats] = useState<JournalStats>({
+    totalEntries: 0,
+    thisWeek: 0,
+    totalWords: 0,
+    averageMood: 0
+  })
   const [newEntry, setNewEntry] = useState({
     title: "",
     content: "",
     mood: "neutre" as const,
   })
 
-  const [entries, setEntries] = useState<JournalEntry[]>([
-    {
-      id: 1,
-      title: "Une journée productive",
-      content:
-        "Aujourd'hui j'ai réussi à terminer tous mes objectifs de la journée. J'ai fait ma séance de sport matinale, travaillé sur mon projet personnel pendant 2 heures, et pris le temps de lire avant de me coucher. Je me sens vraiment satisfait de cette journée bien remplie.",
-      mood: "excellent",
-      date: "2024-01-15",
-      tags: ["productivité", "sport", "lecture"],
-      wordCount: 65,
-    },
-    {
-      id: 2,
-      title: "Réflexions sur l'équilibre vie-travail",
-      content:
-        "Ces derniers jours, j'ai réfléchi à l'importance de l'équilibre entre vie professionnelle et personnelle. En France, nous avons cette culture du 'savoir-vivre' qui me semble précieuse. J'aimerais mieux l'intégrer dans mon quotidien.",
-      mood: "bon",
-      date: "2024-01-14",
-      tags: ["réflexion", "travail", "équilibre"],
-      wordCount: 52,
-    },
-    {
-      id: 3,
-      title: "Apprentissage du piano",
-      content:
-        "Ma première leçon de piano s'est bien passée ! C'est difficile au début, mais j'adore découvrir cet instrument. Mon professeur m'a donné des exercices simples pour commencer. J'ai hâte de pouvoir jouer mes premiers morceaux.",
-      mood: "excellent",
-      date: "2024-01-13",
-      tags: ["apprentissage", "piano", "musique"],
-      wordCount: 48,
-    },
-    {
-      id: 4,
-      title: "Journée difficile au travail",
-      content:
-        "Aujourd'hui a été compliqué au bureau. Beaucoup de stress et de pression. J'ai eu du mal à me concentrer et je me suis senti dépassé par les événements. Il faut que je trouve des stratégies pour mieux gérer ces moments.",
-      mood: "difficile",
-      date: "2024-01-12",
-      tags: ["travail", "stress", "gestion"],
-      wordCount: 45,
-    },
-  ])
+  useEffect(() => {
+    fetchJournalData()
+  }, [searchTerm])
+
+  const fetchJournalData = async () => {
+    try {
+      const url = searchTerm ? `/api/journal?search=${encodeURIComponent(searchTerm)}` : '/api/journal'
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des données')
+      }
+      
+      const data = await response.json()
+      setEntries(data.entries)
+      setStats(data.stats)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveEntry = async () => {
+    if (!newEntry.title.trim() || !newEntry.content.trim()) return
+
+    try {
+      const response = await fetch('/api/journal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newEntry),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde')
+      }
+
+      const data = await response.json()
+      setEntries([data.entry, ...entries])
+      setNewEntry({ title: "", content: "", mood: "neutre" })
+      setIsWriting(false)
+      
+      // Recharger les statistiques
+      fetchJournalData()
+    } catch (error) {
+      console.error('Erreur:', error)
+      setError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde')
+    }
+  }
+
+  const handleDeleteEntry = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette entrée ?')) return
+
+    try {
+      const response = await fetch(`/api/journal/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression')
+      }
+
+      setEntries(entries.filter(entry => entry.id !== id))
+      fetchJournalData() // Recharger les statistiques
+    } catch (error) {
+      console.error('Erreur:', error)
+      setError(error instanceof Error ? error.message : 'Erreur lors de la suppression')
+    }
+  }
 
   const getMoodIcon = (mood: string) => {
     switch (mood) {
@@ -124,39 +169,6 @@ export default function JournalPage() {
       entry.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())),
   )
-
-  const handleSaveEntry = () => {
-    if (!newEntry.title.trim() || !newEntry.content.trim()) return
-
-    const entry: JournalEntry = {
-      id: entries.length + 1,
-      title: newEntry.title,
-      content: newEntry.content,
-      mood: newEntry.mood,
-      date: new Date().toISOString().split("T")[0],
-      tags: [], // Could be extracted from content or added separately
-      wordCount: newEntry.content.split(" ").length,
-    }
-
-    setEntries([entry, ...entries])
-    setNewEntry({ title: "", content: "", mood: "neutre" })
-    setIsWriting(false)
-  }
-
-  const stats = {
-    totalEntries: entries.length,
-    thisWeek: entries.filter((entry) => {
-      const entryDate = new Date(entry.date)
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      return entryDate >= weekAgo
-    }).length,
-    totalWords: entries.reduce((acc, entry) => acc + entry.wordCount, 0),
-    averageMood:
-      entries.length > 0
-        ? (entries.filter((entry) => ["excellent", "bon"].includes(entry.mood)).length / entries.length) * 100
-        : 0,
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -222,6 +234,15 @@ export default function JournalPage() {
             Nouvelle entrée
           </Button>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600">{error}</p>
+            <Button onClick={() => setError("")} variant="outline" size="sm" className="mt-2">
+              Fermer
+            </Button>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -348,92 +369,97 @@ export default function JournalPage() {
 
         {/* Journal Entries */}
         <div className="space-y-6">
-          {filteredEntries.map((entry) => (
-            <Card key={entry.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-lg">{entry.title}</CardTitle>
-                      <Badge className={getMoodColor(entry.mood)}>
-                        <span className="flex items-center gap-1">
-                          {getMoodIcon(entry.mood)}
-                          {entry.mood}
-                        </span>
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(entry.date).toLocaleDateString("fr-FR", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                      <span>{entry.wordCount} mots</span>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Modifier
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Chargement de vos entrées...</p>
+            </div>
+          ) : entries.length === 0 ? (
+            <Card className="text-center py-12">
               <CardContent>
-                <p className="text-gray-700 leading-relaxed mb-4">{entry.content}</p>
-                {entry.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {entry.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        #{tag}
-                      </Badge>
-                    ))}
-                  </div>
+                <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {searchTerm ? "Aucune entrée trouvée" : "Votre journal est vide"}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm
+                    ? "Essayez avec d'autres mots-clés"
+                    : "Commencez par écrire votre première entrée de journal"}
+                </p>
+                {!searchTerm && (
+                  <Button
+                    onClick={() => setIsWriting(true)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Première entrée
+                  </Button>
                 )}
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            filteredEntries.map((entry) => (
+              <Card key={entry.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle className="text-lg">{entry.title}</CardTitle>
+                        <Badge className={getMoodColor(entry.mood)}>
+                          <span className="flex items-center gap-1">
+                            {getMoodIcon(entry.mood)}
+                            {entry.mood}
+                          </span>
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(entry.date).toLocaleDateString("fr-FR", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <span>{entry.wordCount} mots</span>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Modifier
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Supprimer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 leading-relaxed mb-4">{entry.content}</p>
+                  {entry.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {entry.tags.map((tag, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          #{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
-
-        {filteredEntries.length === 0 && (
-          <Card className="text-center py-12">
-            <CardContent>
-              <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm ? "Aucune entrée trouvée" : "Votre journal est vide"}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm
-                  ? "Essayez avec d'autres mots-clés"
-                  : "Commencez par écrire votre première entrée de journal"}
-              </p>
-              {!searchTerm && (
-                <Button
-                  onClick={() => setIsWriting(true)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Première entrée
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   )
