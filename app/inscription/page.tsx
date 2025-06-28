@@ -25,23 +25,59 @@ export default function InscriptionPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("") // Effacer l'erreur quand l'utilisateur tape
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!acceptTerms) return
 
-    setIsLoading(true)
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas")
+      return
+    }
 
-    // Simulation d'inscription
-    setTimeout(() => {
+    if (formData.password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères")
+      return
+    }
+
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: `${formData.firstName} ${formData.lastName}`.trim()
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'inscription')
+      }
+
+      // Inscription réussie, rediriger vers la connexion
+      router.push('/connexion?message=Compte créé avec succès ! Vous pouvez maintenant vous connecter.')
+      
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Erreur lors de l\'inscription')
+    } finally {
       setIsLoading(false)
-      router.push("/tableau-de-bord")
-    }, 2000)
+    }
   }
 
   return (
@@ -65,6 +101,12 @@ export default function InscriptionPage() {
             <CardDescription>Commencez votre transformation personnelle dès aujourd'hui</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -123,12 +165,12 @@ export default function InscriptionPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Minimum 8 caractères"
+                    placeholder="Minimum 6 caractères"
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     className="pl-10 pr-10"
                     required
-                    minLength={8}
+                    minLength={6}
                   />
                   <button
                     type="button"

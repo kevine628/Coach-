@@ -17,17 +17,37 @@ export default function ConnexionPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
-    // Simulation de connexion
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la connexion')
+      }
+
+      // Connexion réussie, rediriger vers le tableau de bord
       router.push("/tableau-de-bord")
-    }, 1500)
+      
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Erreur lors de la connexion')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -51,6 +71,18 @@ export default function ConnexionPage() {
             <CardDescription>Connectez-vous à votre compte pour continuer votre parcours</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+            
+            {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('message') && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-green-600 text-sm">{new URLSearchParams(window.location.search).get('message')}</p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Adresse email</Label>
