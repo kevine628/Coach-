@@ -1,42 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyToken } from '@/lib/auth'
+import { getAuthenticatedUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const user = await getAuthenticatedUser(request)
     
-    if (!token) {
+    if (!user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
-    }
-
-    const userId = payload.userId
-
-    // Récupérer les données de l'utilisateur
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true
-      }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
-    }
+    const userId = user.id
 
     // Récupérer les objectifs actifs
     const goals = await prisma.goal.findMany({
       where: { 
         userId,
-        status: 'active'
+        status: 'en_cours'
       },
       orderBy: { createdAt: 'desc' },
       take: 5
@@ -61,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     // Calculer les statistiques
     const totalGoals = await prisma.goal.count({
-      where: { userId, status: 'active' }
+      where: { userId, status: 'en_cours' }
     })
 
     const completedTasksToday = await prisma.task.count({
@@ -101,7 +81,7 @@ export async function GET(request: NextRequest) {
         id: goal.id,
         title: goal.title,
         description: goal.description,
-        progress: 0,
+        progress: goal.progress || 0,
         targetDate: goal.targetDate,
         status: goal.status,
         priority: goal.priority

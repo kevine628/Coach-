@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../lib/generated/prisma"
 }
 
 datasource db {
@@ -19,6 +18,9 @@ model User {
   email     String   @unique
   password  String
   name      String?
+  phone     String?
+  location  String?
+  preferences Json?  // Stockage des préférences utilisateur
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -26,6 +28,8 @@ model User {
   goals     Goal[]
   journalEntries JournalEntry[]
   tasks     Task[]
+  notifications Notification[]
+  chatMessages ChatMessage[]
 
   @@map("users")
 }
@@ -34,9 +38,11 @@ model Goal {
   id          String   @id @default(cuid())
   title       String
   description String?
+  progress    Int      @default(0) // Pourcentage de progression (0-100)
   targetDate  DateTime?
-  status      String   @default("active") // active, completed, cancelled
-  priority    String   @default("medium") // low, medium, high
+  status      String   @default("en_cours") // en_cours, termine, en_pause
+  category    String   @default("Général")
+  priority    String   @default("moyenne") // haute, moyenne, basse
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -44,6 +50,7 @@ model Goal {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks       Task[]
+  notifications Notification[]
 
   @@map("goals")
 }
@@ -63,6 +70,7 @@ model Task {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   goalId      String?
   goal        Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  notifications Notification[]
 
   @@map("tasks")
 }
@@ -72,6 +80,7 @@ model JournalEntry {
   title     String?
   content   String
   mood      String?  // happy, sad, neutral, excited, etc.
+  tags      Json?    // Array de tags
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -80,4 +89,36 @@ model JournalEntry {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("journal_entries")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   // goal_reminder, task_due, achievement, etc.
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId    String?
+  goal      Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  content   String
+  role      String   // user, assistant
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
 }

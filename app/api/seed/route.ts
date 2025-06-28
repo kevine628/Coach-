@@ -1,87 +1,131 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyToken } from '@/lib/auth'
+import { getAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const user = await getAuthenticatedUser(request)
     
-    if (!token) {
+    if (!user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
-    }
-
-    const userId = payload.userId
+    const userId = user.id
 
     // Créer des objectifs de test
-    const goal1 = await prisma.goal.create({
-      data: {
-        title: "Améliorer ma forme physique",
-        description: "Faire du sport régulièrement et manger plus sainement",
-        targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 jours
-        priority: "high",
-        userId
-      }
-    })
-
-    const goal2 = await prisma.goal.create({
-      data: {
-        title: "Apprendre le piano",
-        description: "Pratiquer 20 minutes par jour",
-        targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 jours
-        priority: "medium",
-        userId
-      }
-    })
+    const goals = await Promise.all([
+      prisma.goal.create({
+        data: {
+          title: 'Perdre 5 kg',
+          description: 'Atteindre un poids santé en 3 mois',
+          progress: 30,
+          targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+          status: 'en_cours',
+          category: 'Santé',
+          priority: 'haute',
+          userId
+        }
+      }),
+      prisma.goal.create({
+        data: {
+          title: 'Apprendre React',
+          description: 'Maîtriser React et Next.js',
+          progress: 60,
+          targetDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+          status: 'en_cours',
+          category: 'Formation',
+          priority: 'moyenne',
+          userId
+        }
+      }),
+      prisma.goal.create({
+        data: {
+          title: 'Lire 12 livres',
+          description: 'Un livre par mois',
+          progress: 25,
+          targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          status: 'en_cours',
+          category: 'Culture',
+          priority: 'basse',
+          userId
+        }
+      })
+    ])
 
     // Créer des tâches de test
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    await prisma.task.createMany({
-      data: [
-        {
-          title: "Séance de sport (30 min)",
-          description: "Cardio et musculation",
-          dueDate: today,
-          priority: "high",
-          completed: true,
-          userId
-        },
-        {
-          title: "Pratiquer le piano (20 min)",
-          description: "Nouvelle partition",
-          dueDate: today,
-          priority: "medium",
+    const tasks = await Promise.all([
+      prisma.task.create({
+        data: {
+          title: 'Faire 30 minutes de sport',
+          description: 'Cardio ou musculation',
           completed: false,
-          userId
-        },
-        {
-          title: "Lire 10 pages",
-          description: "Livre en cours",
           dueDate: today,
-          priority: "low",
-          completed: false,
-          userId
-        },
-        {
-          title: "Méditation (10 min)",
-          description: "Séance de relaxation",
-          dueDate: today,
-          priority: "medium",
-          completed: true,
+          priority: 'haute',
           userId
         }
-      ]
-    })
+      }),
+      prisma.task.create({
+        data: {
+          title: 'Réviser React Hooks',
+          description: 'useState, useEffect, useContext',
+          completed: true,
+          dueDate: today,
+          priority: 'moyenne',
+          userId
+        }
+      }),
+      prisma.task.create({
+        data: {
+          title: 'Appeler le médecin',
+          description: 'Prendre rendez-vous pour contrôle',
+          completed: false,
+          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          priority: 'basse',
+          userId
+        }
+      }),
+      prisma.task.create({
+        data: {
+          title: 'Lire chapitre 3 du livre',
+          description: 'Continuer la lecture',
+          completed: false,
+          dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          priority: 'basse',
+          userId
+        }
+      })
+    ])
 
-    return NextResponse.json({ 
+    // Créer des entrées de journal
+    const journalEntries = await Promise.all([
+      prisma.journalEntry.create({
+        data: {
+          title: 'Ma première journée',
+          content: 'Aujourd\'hui, j\'ai commencé mon parcours de développement personnel. Je me sens motivé et prêt à relever les défis qui m\'attendent.',
+          mood: 'excited',
+          tags: ['motivation', 'début'],
+          userId
+        }
+      }),
+      prisma.journalEntry.create({
+        data: {
+          title: 'Réflexions sur mes objectifs',
+          content: 'J\'ai réfléchi à mes objectifs et je réalise que je dois être plus spécifique dans mes actions. La clé est la constance.',
+          mood: 'reflective',
+          tags: ['objectifs', 'réflexion'],
+          userId
+        }
+      })
+    ])
+
+    return NextResponse.json({
       message: 'Données de test créées avec succès',
-      goals: [goal1, goal2]
+      created: {
+        goals: goals.length,
+        tasks: tasks.length,
+        journalEntries: journalEntries.length
+      }
     })
 
   } catch (error) {

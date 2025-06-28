@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Brain,
   Target,
@@ -179,9 +180,7 @@ export default function TableauDeBordPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="w-5 h-5" />
-            </Button>
+            <ThemeToggle />
             <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
             </Button>
@@ -195,215 +194,215 @@ export default function TableauDeBordPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Bonjour, {data.user.name ? data.user.name.split(" ")[0] : 'Utilisateur'} ! 👋
-              </h1>
-              <p className="text-gray-600 mt-1">Voici un aperçu de vos progrès aujourd'hui</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={createTestData} variant="outline" size="sm">
-                Créer données de test
-              </Button>
-              <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                Plan {data.user.plan}
-              </Badge>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Bonjour, {data.user.name || 'Utilisateur'} ! 👋
+          </h1>
+          <p className="text-gray-600">Voici un aperçu de votre progression aujourd'hui</p>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Objectifs actifs</CardTitle>
-              <Target className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{data.stats.activeGoals}</div>
-              <p className="text-xs text-muted-foreground">En cours</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tâches complétées</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {data.stats.completedTasksToday}/{data.stats.totalTasksToday}
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Objectifs actifs</p>
+                  <p className="text-2xl font-bold text-gray-900">{data.stats.activeGoals}</p>
+                </div>
+                <Target className="w-8 h-8 text-blue-600" />
               </div>
-              <p className="text-xs text-muted-foreground">Aujourd'hui</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Série actuelle</CardTitle>
-              <TrendingUp className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0 jours</div>
-              <p className="text-xs text-muted-foreground">Commencez aujourd'hui !</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Tâches terminées</p>
+                  <p className="text-2xl font-bold text-gray-900">{data.stats.completedTasksToday}/{data.stats.totalTasksToday}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Score bien-être</CardTitle>
-              <BarChart3 className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{data.stats.wellbeingScore}/10</div>
-              <p className="text-xs text-muted-foreground">Excellent !</p>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Score bien-être</p>
+                  <p className="text-2xl font-bold text-gray-900">{data.stats.wellbeingScore}/10</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Plan actuel</p>
+                  <p className="text-2xl font-bold text-gray-900">{data.user.plan}</p>
+                </div>
+                <Sparkles className="w-8 h-8 text-yellow-600" />
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Today's Tasks */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    Tâches du jour
-                  </CardTitle>
-                  <Button size="sm" variant="outline">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Ajouter
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Actions rapides</h2>
+            <Button onClick={createTestData} variant="outline" size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Créer des données de test
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button asChild className="h-20 flex-col">
+              <Link href="/objectifs/nouveau">
+                <Target className="w-6 h-6 mb-2" />
+                Nouvel objectif
+              </Link>
+            </Button>
+            
+            <Button asChild className="h-20 flex-col">
+              <Link href="/journal">
+                <BookOpen className="w-6 h-6 mb-2" />
+                Écrire dans le journal
+              </Link>
+            </Button>
+            
+            <Button asChild className="h-20 flex-col">
+              <Link href="/assistant">
+                <MessageSquare className="w-6 h-6 mb-2" />
+                Parler à l'IA
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Goals and Tasks */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Goals */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                Objectifs en cours
+              </CardTitle>
+              <CardDescription>Vos objectifs actifs et leur progression</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.goals.length === 0 ? (
+                <div className="text-center py-8">
+                  <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucun objectif en cours</p>
+                  <Button asChild className="mt-4" size="sm">
+                    <Link href="/objectifs/nouveau">Créer un objectif</Link>
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {data.todayTasks.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">
-                      Aucune tâche pour aujourd'hui. Profitez de votre journée !
-                    </p>
-                  ) : (
-                    data.todayTasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50">
-                        <div
-                          className={`w-5 h-5 rounded-full border-2 cursor-pointer transition-colors ${
-                            task.completed
-                              ? "bg-green-500 border-green-500"
-                              : "border-gray-300 hover:border-green-500"
-                          }`}
-                          onClick={() => toggleTaskCompletion(task.id, task.completed)}
-                        >
-                          {task.completed && <CheckCircle className="w-5 h-5 text-white" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className={`font-medium ${task.completed ? "line-through text-gray-500" : ""}`}>
-                            {task.title}
-                          </p>
-                          {task.description && (
-                            <p className="text-sm text-gray-500">{task.description}</p>
-                          )}
-                        </div>
-                        <Badge variant={task.priority === 'high' ? 'destructive' : 'secondary'}>
-                          {task.priority}
+              ) : (
+                <div className="space-y-4">
+                  {data.goals.map((goal) => (
+                    <div key={goal.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{goal.title}</h3>
+                        <Badge variant={goal.priority === 'haute' ? 'destructive' : 'secondary'}>
+                          {goal.priority}
                         </Badge>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Goals */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="w-5 h-5 text-green-600" />
-                    Objectifs actifs
-                  </CardTitle>
-                  <Link href="/objectifs">
-                    <Button size="sm" variant="outline">
-                      Voir tout
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {data.goals.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">
-                      Aucun objectif actif. Créez votre premier objectif !
-                    </p>
-                  ) : (
-                    data.goals.map((goal) => (
-                      <div key={goal.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium">{goal.title}</h4>
-                          <Badge variant="outline">{goal.priority}</Badge>
+                      {goal.description && (
+                        <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
+                      )}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progression</span>
+                          <span>{goal.progress}%</span>
                         </div>
-                        {goal.description && (
-                          <p className="text-sm text-gray-600">{goal.description}</p>
-                        )}
                         <Progress value={goal.progress} className="h-2" />
-                        <p className="text-xs text-gray-500">{goal.progress}% complété</p>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* AI Suggestions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  Suggestions IA
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {aiSuggestions.map((suggestion, index) => (
-                    <div key={index} className="p-3 bg-purple-50 rounded-lg">
-                      <p className="text-sm text-purple-800">{suggestion}</p>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions rapides</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full justify-start" variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouvel objectif
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Écrire dans le journal
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Parler à l'assistant
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Today's Tasks */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Tâches du jour
+              </CardTitle>
+              <CardDescription>Vos tâches pour aujourd'hui</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.todayTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucune tâche pour aujourd'hui</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {data.todayTasks.map((task) => (
+                    <div key={task.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleTaskCompletion(task.id, task.completed)}
+                        className="p-1"
+                      >
+                        <CheckCircle className={`w-5 h-5 ${task.completed ? 'text-green-600' : 'text-gray-400'}`} />
+                      </Button>
+                      <div className="flex-1">
+                        <p className={`font-medium ${task.completed ? 'line-through text-gray-500' : ''}`}>
+                          {task.title}
+                        </p>
+                        {task.description && (
+                          <p className="text-sm text-gray-600">{task.description}</p>
+                        )}
+                      </div>
+                      <Badge variant={task.priority === 'haute' ? 'destructive' : 'secondary'}>
+                        {task.priority}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+
+        {/* AI Suggestions */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              Suggestions de l'IA
+            </CardTitle>
+            <CardDescription>Recommandations personnalisées pour améliorer votre bien-être</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {aiSuggestions.map((suggestion, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <p className="text-sm text-blue-900">{suggestion}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   )
 }

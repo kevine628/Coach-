@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { prisma } from './prisma'
+import { NextRequest } from 'next/server'
 
 export interface JWTPayload {
   userId: string
@@ -22,9 +23,28 @@ export function generateToken(payload: JWTPayload): string {
 export function verifyToken(token: string): JWTPayload | null {
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
-  } catch {
+  } catch (error) {
     return null
   }
+}
+
+export async function getAuthenticatedUser(request: NextRequest) {
+  const token = request.cookies.get('token')?.value
+  
+  if (!token) {
+    return null
+  }
+
+  const payload = verifyToken(token)
+  if (!payload) {
+    return null
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId }
+  })
+
+  return user
 }
 
 export async function createUser(email: string, password: string, name?: string) {

@@ -41,7 +41,7 @@ export default function ConnexionPage() {
       }
 
       // Connexion réussie, rediriger vers le tableau de bord
-      router.push("/tableau-de-bord")
+      window.location.href = '/tableau-de-bord'
       
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Erreur lors de la connexion')

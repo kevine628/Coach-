@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,84 +22,157 @@ import {
   Trash2,
   Bell,
   Settings,
+  Loader2,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useToast } from "@/hooks/use-toast"
 
-interface Objective {
-  id: number
+interface Goal {
+  id: string
   title: string
-  description: string
+  description: string | null
   progress: number
-  deadline: string
+  targetDate: string | null
   status: "en_cours" | "termine" | "en_pause"
   category: string
   priority: "haute" | "moyenne" | "basse"
   createdAt: string
+  updatedAt: string
 }
 
 export default function ObjectifsPage() {
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterCategory, setFilterCategory] = useState("tous")
+  const [objectives, setObjectives] = useState<Goal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [objectives, setObjectives] = useState<Objective[]>([
-    {
-      id: 1,
-      title: "Améliorer ma forme physique",
-      description: "Faire du sport 3 fois par semaine et adopter une alimentation équilibrée",
-      progress: 65,
-      deadline: "2024-03-15",
-      status: "en_cours",
-      category: "Santé",
-      priority: "haute",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: 2,
-      title: "Apprendre le piano",
-      description: "Pratiquer 30 minutes par jour et maîtriser 5 morceaux classiques",
-      progress: 30,
-      deadline: "2024-06-01",
-      status: "en_cours",
-      category: "Loisirs",
-      priority: "moyenne",
-      createdAt: "2024-01-20",
-    },
-    {
-      id: 3,
-      title: "Lire 12 livres cette année",
-      description: "Lire au moins un livre par mois, varier les genres littéraires",
-      progress: 80,
-      deadline: "2024-12-31",
-      status: "en_cours",
-      category: "Culture",
-      priority: "basse",
-      createdAt: "2024-01-01",
-    },
-    {
-      id: 4,
-      title: "Apprendre l'espagnol",
-      description: "Atteindre un niveau B1 avec 20 minutes de pratique quotidienne",
-      progress: 45,
-      deadline: "2024-08-30",
-      status: "en_cours",
-      category: "Apprentissage",
-      priority: "moyenne",
-      createdAt: "2024-02-01",
-    },
-    {
-      id: 5,
-      title: "Méditation quotidienne",
-      description: "Méditer 10 minutes chaque matin pendant 3 mois",
-      progress: 100,
-      deadline: "2024-02-28",
-      status: "termine",
-      category: "Bien-être",
-      priority: "haute",
-      createdAt: "2023-12-01",
-    },
-  ])
+  useEffect(() => {
+    fetchGoals()
+  }, [])
 
-  const categories = ["tous", "Santé", "Loisirs", "Culture", "Apprentissage", "Bien-être", "Travail"]
+  const fetchGoals = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("token")
+      
+      if (!token) {
+        setError("Vous devez être connecté")
+        return
+      }
+
+      const response = await fetch("/api/goals", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("Session expirée")
+          return
+        }
+        throw new Error("Erreur lors de la récupération des objectifs")
+      }
+
+      const data = await response.json()
+      setObjectives(data)
+    } catch (error) {
+      console.error("Erreur:", error)
+      setError("Erreur lors du chargement des objectifs")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteGoal = async (goalId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const response = await fetch(`/api/goals/${goalId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la suppression")
+      }
+
+      toast({
+        title: "Succès",
+        description: "Objectif supprimé avec succès"
+      })
+
+      fetchGoals()
+    } catch (error) {
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la suppression de l'objectif",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleUpdateProgress = async (goalId: string, newProgress: number) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const response = await fetch(`/api/goals/${goalId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ progress: newProgress })
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la mise à jour")
+      }
+
+      setObjectives(prev => 
+        prev.map(goal => 
+          goal.id === goalId 
+            ? { ...goal, progress: newProgress }
+            : goal
+        )
+      )
+
+      toast({
+        title: "Succès",
+        description: "Progrès mis à jour"
+      })
+    } catch (error) {
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour du progrès",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const categories = ["tous", "Général", "Santé", "Loisirs", "Culture", "Apprentissage", "Bien-être", "Travail", "Finance", "Relations"]
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -130,7 +203,7 @@ export default function ObjectifsPage() {
   const filteredObjectives = objectives.filter((objective) => {
     const matchesSearch =
       objective.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      objective.description.toLowerCase().includes(searchTerm.toLowerCase())
+      (objective.description && objective.description.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesCategory = filterCategory === "tous" || objective.category === filterCategory
     return matchesSearch && matchesCategory
   })
@@ -139,7 +212,35 @@ export default function ObjectifsPage() {
     total: objectives.length,
     enCours: objectives.filter((obj) => obj.status === "en_cours").length,
     termines: objectives.filter((obj) => obj.status === "termine").length,
-    progressMoyen: Math.round(objectives.reduce((acc, obj) => acc + obj.progress, 0) / objectives.length),
+    progressMoyen: objectives.length > 0 
+      ? Math.round(objectives.reduce((acc, obj) => acc + obj.progress, 0) / objectives.length)
+      : 0,
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Chargement des objectifs...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de chargement</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={fetchGoals} variant="outline">
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -326,7 +427,10 @@ export default function ObjectifsPage() {
                         <Calendar className="w-4 h-4 mr-2" />
                         Programmer rappel
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => handleDeleteGoal(objective.id)}
+                      >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Supprimer
                       </DropdownMenuItem>
@@ -339,17 +443,29 @@ export default function ObjectifsPage() {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm font-medium">Progrès</span>
-                      <span className="text-sm text-gray-600">{objective.progress}%</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">{objective.progress}%</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUpdateProgress(objective.id, Math.min(100, objective.progress + 10))}
+                          disabled={objective.progress >= 100}
+                        >
+                          +
+                        </Button>
+                      </div>
                     </div>
                     <Progress value={objective.progress} className="h-2" />
                   </div>
 
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <div className="flex items-center gap-4">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        Échéance : {new Date(objective.deadline).toLocaleDateString("fr-FR")}
-                      </span>
+                      {objective.targetDate && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Échéance : {new Date(objective.targetDate).toLocaleDateString("fr-FR")}
+                        </span>
+                      )}
                       <Badge variant="secondary">{objective.category}</Badge>
                     </div>
                     <span>Créé le {new Date(objective.createdAt).toLocaleDateString("fr-FR")}</span>
