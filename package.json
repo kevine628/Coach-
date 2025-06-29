@@ -1,12 +1,43 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "coachia-desktop",
+  "version": "1.0.0",
+  "description": "CoachIA - Votre Coach IA Personnel - Application de Bureau",
+  "main": "electron/main.js",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-build": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish=never"
+  },
+  "build": {
+    "appId": "com.coachia.desktop",
+    "productName": "CoachIA",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "electron/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "public/placeholder-logo.png"
+    },
+    "win": {
+      "icon": "public/placeholder-logo.png",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "public/placeholder-logo.png",
+      "target": "AppImage"
+    }
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -71,8 +102,12 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.0",
+    "electron": "^37.1.0",
+    "electron-builder": "^26.0.12",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.3"
   }
 }
