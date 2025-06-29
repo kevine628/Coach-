@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['bcryptjs'],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,7 +12,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ['@prisma/client']
+  serverExternalPackages: ['@prisma/client'],
+  output: 'standalone',
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
+  },
 }
 
 export default nextConfig
