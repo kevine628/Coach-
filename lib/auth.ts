@@ -79,14 +79,14 @@ export async function createUser(email: string, password: string, name: string) 
         email,
         password: hashedPassword,
         name,
-        preferences: {
+        preferences: JSON.stringify({
           theme: 'light',
           notifications: {
             email: true,
             push: false
           },
           language: 'fr'
-        }
+        })
       }
     })
 

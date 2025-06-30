@@ -46,21 +46,21 @@ export async function POST(request: NextRequest) {
     // Hacher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Créer l'utilisateur
+    // Créer l'utilisateur avec les préférences en JSON string
     const user = await prisma.user.create({
       data: {
         name,
         email,
         phone: phone || null,
         password: hashedPassword,
-        preferences: {
+        preferences: JSON.stringify({
           theme: 'light',
           notifications: {
             email: true,
             push: false
           },
           language: 'fr'
-        }
+        })
       }
     })
 

@@ -5,6 +5,8 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
+    console.log('Tentative de connexion pour:', email)
+
     // Validation
     if (!email || !password) {
       return NextResponse.json(
@@ -17,11 +19,14 @@ export async function POST(request: NextRequest) {
     const user = await authenticateUser(email, password)
     
     if (!user) {
+      console.log('Échec de l\'authentification pour:', email)
       return NextResponse.json(
         { error: 'Email ou mot de passe incorrect' },
         { status: 401 }
       )
     }
+
+    console.log('Authentification réussie pour:', email)
 
     // Générer le token JWT
     const token = generateToken({
@@ -29,10 +34,11 @@ export async function POST(request: NextRequest) {
       email: user.email
     })
 
-    // Créer la réponse avec le cookie
+    // Créer la réponse avec le cookie ET le token dans le JSON
     const response = NextResponse.json(
       { 
         message: 'Connexion réussie',
+        token: token, // Ajouter le token dans la réponse JSON
         user: {
           id: user.id,
           email: user.email,
@@ -49,6 +55,8 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 // 7 jours
     })
+
+    console.log('Token généré et cookie défini pour:', email)
 
     return response
 

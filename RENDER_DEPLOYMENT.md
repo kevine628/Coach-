@@ -1,71 +1,101 @@
-# 🚀 Déploiement CoachIA sur Render
+# 🚀 Guide pas à pas : Déploiement sur Render
 
-## 📋 Étapes de Déploiement
+## 📋 Prérequis
 
-### 1. Créer un compte Render
-1. Va sur [render.com](https://render.com)
-2. Clique sur "Get Started for Free"
-3. Connecte-toi avec GitHub
-
-### 2. Créer un nouveau Web Service
-1. Clique sur "New" → "Web Service"
-2. Connecte ton repository GitHub `kevine628/cluely-fr`
-3. Render va automatiquement détecter Next.js
-
-### 3. Configuration du service
-- **Name** : `cluely-fr`
-- **Environment** : `Node`
-- **Build Command** : `npm install && npx prisma generate && npm run build`
-- **Start Command** : `npm start`
-- **Plan** : `Free`
-
-### 4. Variables d'environnement
-Dans "Environment Variables", ajoute :
-```env
-NODE_ENV=production
-JWT_SECRET=860db857b092460d29fb8826e20fb209f1b64cfb5df243f5abf82a86e6ab65ec
-```
-
-### 5. Créer la base de données PostgreSQL
-1. Clique sur "New" → "PostgreSQL"
-2. Nomme-la `cluely-fr-db`
-3. Plan : `Free`
-4. Copie l'URL de connexion
-
-### 6. Lier la base de données
-1. Va dans ton service web
-2. "Environment" → "Environment Variables"
-3. Ajoute : `DATABASE_URL` = URL de ta base PostgreSQL
-
-## 🔧 Migration de la Base de Données
-
-Une fois déployé, va dans "Shell" de ton service et lance :
-```bash
-npx prisma db push
-node scripts/init-achievements.js
-```
-
-## 🌐 URLs de Déploiement
-
-- **Render** : `https://cluely-fr.onrender.com`
-- **Domaine personnalisé** : Configurable dans "Settings"
-
-## 💰 Coûts
-
-- **Gratuit** : Service web + base PostgreSQL
-- **Limitations** : Service peut "s'endormir" après 15 min d'inactivité
-- **Payant** : $7/mois pour service toujours actif
-
-## 🚨 Dépannage
-
-### Service qui ne démarre pas
-- Vérifie les logs dans "Logs"
-- Assure-toi que `DATABASE_URL` est correct
-
-### Erreur de build
-- Vérifie que toutes les dépendances sont installées
-- Regarde les logs de build
+- Compte GitHub avec le code du projet (voir DEPLOYMENT.md pour l'upload)
+- Compte Render : https://render.com
+- (Optionnel) Un domaine personnalisé
 
 ---
 
-**🎉 Ton site CoachIA sera en ligne en 5 minutes !** 
+## 1. Préparer le repository Git
+
+Assure-toi que ton code est bien sur GitHub. Si ce n'est pas fait :
+
+```bash
+git init
+git add .
+git commit -m "Préparation pour Render"
+git remote add origin https://github.com/ton-username/cluely-fr.git
+git push -u origin main
+```
+
+---
+
+## 2. Créer la base de données PostgreSQL sur Render
+
+1. Va sur https://dashboard.render.com
+2. Clique sur **New** > **PostgreSQL**
+3. Donne un nom à ta base, choisis la région, puis crée-la
+4. Une fois créée, clique sur la base puis sur **Connection** pour copier l'URL de connexion (format : `postgresql://...`)
+
+---
+
+## 3. Déployer l'application Web
+
+1. Sur Render, clique sur **New** > **Web Service**
+2. Choisis **Connect a repository** et connecte ton compte GitHub
+3. Sélectionne le repo `cluely-fr`
+4. Configure :
+   - **Environment** : Node
+   - **Build Command** :
+     ```bash
+     npm install
+     npx prisma generate
+     npx prisma db push
+     npm run build
+     ```
+   - **Start Command** :
+     ```bash
+     npm start
+     ```
+   - **Root Directory** : laisse vide si le code est à la racine
+5. Clique sur **Advanced** puis **Environment Variables** et ajoute :
+   - `DATABASE_URL` = (ton URL Render PostgreSQL)
+   - `JWT_SECRET` = (un secret fort)
+   - `NODE_ENV` = production
+   - (optionnel) `OPENAI_API_KEY`, `NEXT_PUBLIC_APP_URL`, etc.
+6. Clique sur **Create Web Service**
+
+---
+
+## 4. Initialiser les achievements
+
+Après le premier déploiement, va dans l'onglet **Shell** de Render (ou connecte-toi en SSH) et exécute :
+
+```bash
+node scripts/init-achievements.js
+```
+
+---
+
+## 5. Accéder à ton site
+
+- L'URL Render sera du type :
+  `https://cluely-fr.onrender.com`
+- Pour un domaine personnalisé :
+  1. Va dans **Settings** > **Custom Domains**
+  2. Ajoute ton domaine et suis les instructions DNS
+
+---
+
+## 🚨 Dépannage
+
+- Consulte les logs Render pour toute erreur de build ou de démarrage.
+- Pour les migrations Prisma, tu peux aussi utiliser le shell Render :
+  ```bash
+  npx prisma db push
+  ```
+- Vérifie que toutes les variables d'environnement sont bien définies.
+
+---
+
+## 📞 Support
+
+- Documentation Render : https://render.com/docs
+- Documentation Prisma : https://www.prisma.io/docs
+- Issues GitHub : [ton-repo]/issues
+
+---
+
+**🎉 Ton site CoachIA est maintenant en ligne sur Render !** 

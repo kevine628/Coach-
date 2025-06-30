@@ -8,7 +8,8 @@ interface User {
   id: string
   name: string | null
   email: string
-  plan: string
+  phone?: string | null
+  preferences?: any
 }
 
 interface AuthState {
@@ -34,17 +35,9 @@ export function useAuth() {
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setAuthState(prev => ({ ...prev, isLoading: false, isAuthenticated: false }))
-        return
-      }
-
-      // Vérifier le token avec l'API
+      // Vérifier l'authentification via l'API qui utilise les cookies
       const response = await fetch('/api/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include' // Important pour inclure les cookies
       })
 
       if (response.ok) {
@@ -56,8 +49,7 @@ export function useAuth() {
           notificationsCount: userData.notificationsCount || 0
         })
       } else {
-        // Token invalide, le supprimer
-        localStorage.removeItem('token')
+        // Non authentifié
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -83,6 +75,7 @@ export function useAuth() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Important pour recevoir les cookies
         body: JSON.stringify({ email, password }),
       })
 
@@ -92,10 +85,7 @@ export function useAuth() {
         throw new Error(data.error || 'Erreur de connexion')
       }
 
-      // Stocker le token
-      localStorage.setItem('token', data.token)
-      
-      // Mettre à jour l'état
+      // Mettre à jour l'état avec les données utilisateur
       setAuthState({
         user: data.user,
         isAuthenticated: true,
@@ -132,6 +122,7 @@ export function useAuth() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(userData),
       })
 
@@ -141,9 +132,6 @@ export function useAuth() {
         throw new Error(data.error || 'Erreur d\'inscription')
       }
 
-      // Stocker le token
-      localStorage.setItem('token', data.token)
-      
       // Mettre à jour l'état
       setAuthState({
         user: data.user,
@@ -170,8 +158,17 @@ export function useAuth() {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
+  const logout = async () => {
+    try {
+      // Appeler l'API de déconnexion pour nettoyer les cookies
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error)
+    }
+
     setAuthState({
       user: null,
       isAuthenticated: false,

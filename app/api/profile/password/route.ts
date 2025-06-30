@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { getAuthenticatedUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 export async function PUT(request: NextRequest) {
   try {
+    // Récupérer l'utilisateur authentifié
     const user = await getAuthenticatedUser(request)
     
     if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Non authentifié' },
+        { status: 401 }
+      )
     }
 
     const { currentPassword, newPassword } = await request.json()
@@ -28,10 +32,9 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Récupérer l'utilisateur avec le mot de passe haché
+    // Récupérer l'utilisateur avec le mot de passe pour vérification
     const userWithPassword = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { password: true }
+      where: { id: user.id }
     })
 
     if (!userWithPassword) {
@@ -57,7 +60,9 @@ export async function PUT(request: NextRequest) {
     // Mettre à jour le mot de passe
     await prisma.user.update({
       where: { id: user.id },
-      data: { password: hashedNewPassword }
+      data: {
+        password: hashedNewPassword
+      }
     })
 
     return NextResponse.json({

@@ -9,6 +9,8 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
+    "test-build": "node scripts/test-build.js",
+    "deploy-prep": "npm run test-build && echo '✅ Prêt pour le déploiement'",
     "electron": "electron .",
     "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron-build": "npm run build && electron-builder",

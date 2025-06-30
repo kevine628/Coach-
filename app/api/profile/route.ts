@@ -4,23 +4,33 @@ import { getAuthenticatedUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // Récupérer l'utilisateur authentifié depuis les cookies
     const user = await getAuthenticatedUser(request)
     
     if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Non authentifié' },
+        { status: 401 }
+      )
     }
+
+    // Compter les notifications non lues
+    const notificationsCount = await prisma.notification.count({
+      where: {
+        userId: user.id,
+        read: false
+      }
+    })
 
     return NextResponse.json({
       user: {
         id: user.id,
-        name: user.name,
         email: user.email,
+        name: user.name,
         phone: user.phone,
-        location: (user as any).location || null,
-        preferences: user.preferences,
-        plan: 'Gratuit', // À remplacer par la logique de plan
-        createdAt: user.createdAt
-      }
+        preferences: user.preferences ? JSON.parse(user.preferences) : null
+      },
+      notificationsCount
     })
 
   } catch (error) {
@@ -34,28 +44,35 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    // Récupérer l'utilisateur authentifié
     const user = await getAuthenticatedUser(request)
     
     if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Non authentifié' },
+        { status: 401 }
+      )
     }
 
     const { name, phone, location } = await request.json()
 
-    // Validation
-    if (name && name.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Le nom ne peut pas être vide' },
-        { status: 400 }
-      )
-    }
-
+    // Mettre à jour l'utilisateur
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
-        name: name?.trim() || null,
-        phone: phone?.trim() || null,
-        location: location?.trim() || null
+        name: name || null,
+        phone: phone || null,
+        location: location || null
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        location: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true
       }
     })
 
@@ -63,13 +80,11 @@ export async function PUT(request: NextRequest) {
       message: 'Profil mis à jour avec succès',
       user: {
         id: updatedUser.id,
-        name: updatedUser.name,
         email: updatedUser.email,
+        name: updatedUser.name,
         phone: updatedUser.phone,
         location: updatedUser.location,
-        preferences: updatedUser.preferences,
-        plan: 'Gratuit',
-        createdAt: updatedUser.createdAt
+        preferences: updatedUser.preferences ? JSON.parse(updatedUser.preferences) : null
       }
     })
 

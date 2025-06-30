@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -20,7 +20,7 @@ model User {
   name      String?
   phone     String?
   location  String?
-  preferences Json?  // Stockage des préférences utilisateur
+  preferences String?  // Stockage des préférences utilisateur (JSON string)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -31,8 +31,6 @@ model User {
   notifications Notification[]
   chatMessages ChatMessage[]
   userAchievements UserAchievement[]
-
-  @@map("users")
 }
 
 model Goal {
@@ -52,8 +50,6 @@ model Goal {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks       Task[]
   notifications Notification[]
-
-  @@map("goals")
 }
 
 model Task {
@@ -72,8 +68,6 @@ model Task {
   goalId      String?
   goal        Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
   notifications Notification[]
-
-  @@map("tasks")
 }
 
 model JournalEntry {
@@ -81,15 +75,13 @@ model JournalEntry {
   title     String?
   content   String
   mood      String?  // happy, sad, neutral, excited, etc.
-  tags      Json?    // Array de tags
+  tags      String?  // Array de tags (JSON string)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("journal_entries")
 }
 
 model Notification {
@@ -107,8 +99,6 @@ model Notification {
   goal      Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
   taskId    String?
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
-
-  @@map("notifications")
 }
 
 model ChatMessage {
@@ -120,8 +110,6 @@ model ChatMessage {
   // Relations
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("chat_messages")
 }
 
 model Achievement {
@@ -130,15 +118,13 @@ model Achievement {
   description String
   icon        String   // Nom de l'icône (emoji ou nom de classe)
   category    String   // goals, tasks, journal, streak, etc.
-  criteria    Json     // Critères pour débloquer l'achievement
+  criteria    String   // Critères pour débloquer l'achievement (JSON string)
   rarity      String   @default("common") // common, rare, epic, legendary
   points      Int      @default(10) // Points gagnés
   createdAt   DateTime @default(now())
 
   // Relations
   userAchievements UserAchievement[]
-
-  @@map("achievements")
 }
 
 model UserAchievement {
@@ -153,5 +139,4 @@ model UserAchievement {
   achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([userId, achievementId])
-  @@map("user_achievements")
 }

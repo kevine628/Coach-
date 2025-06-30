@@ -15,6 +15,7 @@ services:
           name: cluely-fr-db
           property: connectionString
     healthCheckPath: /
+    autoDeploy: true
 
 databases:
   - name: cluely-fr-db
