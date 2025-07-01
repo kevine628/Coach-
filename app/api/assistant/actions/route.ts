@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { verifyToken } from "../../../../lib/auth"
+import { prisma } from "../../../../lib/prisma"
 
 interface ActionResponse {
   content: string

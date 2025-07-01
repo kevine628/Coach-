@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Search, Target, BookOpen, CheckSquare, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "ui/button"
+import { Input } from "ui/input"
 import {
   Command,
   CommandEmpty,
@@ -11,12 +11,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "ui/command"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "ui/popover"
 import { useRouter } from "next/navigation"
 
 interface SearchResult {

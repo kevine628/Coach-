@@ -4,13 +4,13 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
+import { Button } from "../../components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
+import { Input } from "../../components/ui/input"
+import { Label } from "../../components/ui/label"
+import { Separator } from "../../components/ui/separator"
 import { Brain, Mail, Lock, Eye, EyeOff } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "../../hooks/use-auth"
 
 export default function ConnexionPage() {
   const [email, setEmail] = useState("")

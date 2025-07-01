@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
+import { Progress } from "../../components/ui/progress"
+import { Button } from "../../components/ui/button"
 import { 
   BarChart3, 
   TrendingUp, 
@@ -18,7 +18,7 @@ import {
   Activity
 } from "lucide-react"
 import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "../../hooks/use-toast"
 
 export default function StatistiquesPage() {
   const [stats, setStats] = useState<any>(null)

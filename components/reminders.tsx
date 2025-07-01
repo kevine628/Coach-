@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { AlertTriangle, Clock, Target, CheckCircle, X } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader, CardTitle } from "ui/card"
+import { Button } from "ui/button"
+import { Badge } from "ui/badge"
+import { Alert, AlertDescription } from "ui/alert"
 import { formatDistanceToNow } from "date-fns"
 import { fr } from "date-fns/locale"
 
