@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useToast } from "use-toast"
+import { useToast } from "../components/ui/use-toast"
 
 interface User {
   id: string
