@@ -4,9 +4,10 @@ import { verifyToken } from "../../../../lib/auth"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Promise<{ params: { id: string } }>
 ) {
   try {
+    const { params } = await context
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
     
     if (!token) {
@@ -41,9 +42,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Promise<{ params: { id: string } }>
 ) {
   try {
+    const { params } = await context
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
     
     if (!token) {
@@ -97,9 +99,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Promise<{ params: { id: string } }>
 ) {
   try {
+    const { params } = await context
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
     
     if (!token) {

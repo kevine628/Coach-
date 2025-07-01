@@ -4,9 +4,10 @@ import { verifyToken } from "../../../../lib/auth"
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Promise<{ params: { id: string } }>
 ) {
   try {
+    const { params } = await context
     const token = request.cookies.get('token')?.value
     
     if (!token) {

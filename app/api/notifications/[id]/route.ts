@@ -4,9 +4,10 @@ import { prisma } from "../../../../lib/prisma"
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Promise<{ params: { id: string } }>
 ) {
   try {
+    const { params } = await context
     // Vérifier l'authentification
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
