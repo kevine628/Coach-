@@ -4,10 +4,10 @@ import { verifyToken } from "../../../../lib/auth"
 
 export async function PATCH(
   request: NextRequest,
-  context: Promise<{ params: { id: string } }>
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = await context
+    const { id } = await params
     const token = request.cookies.get('token')?.value
     
     if (!token) {
@@ -19,7 +19,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
-    const { id } = params
     const { completed } = await request.json()
 
     // Vérifier que la tâche appartient à l'utilisateur

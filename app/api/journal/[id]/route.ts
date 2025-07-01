@@ -4,10 +4,10 @@ import { verifyToken } from "../../../../lib/auth"
 
 export async function DELETE(
   request: NextRequest,
-  context: Promise<{ params: { id: string } }>
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = await context
+    const { id } = await params
     const token = request.cookies.get('token')?.value
     
     if (!token) {
@@ -19,7 +19,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
-    const { id } = params
     const userId = payload.userId
 
     // Vérifier que l'entrée appartient à l'utilisateur

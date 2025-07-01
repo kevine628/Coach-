@@ -4,10 +4,10 @@ import { prisma } from "../../../../lib/prisma"
 
 export async function DELETE(
   request: NextRequest,
-  context: Promise<{ params: { id: string } }>
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = await context
+    const { id } = await params
     // Vérifier l'authentification
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
@@ -18,8 +18,6 @@ export async function DELETE(
     if (!decoded) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
-
-    const { id } = params
 
     // Supprimer la notification
     await prisma.notification.delete({
