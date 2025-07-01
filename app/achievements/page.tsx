@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button-simple"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-simple"
-import { ThemeToggle } from "@/components/theme-toggle-simple"
-import { NotificationsComponent } from "@/components/notifications-simple"
-import { AchievementsComponent } from "@/components/achievements-simple"
+import { Button } from "../../components/ui/button-simple"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar-simple"
+import { ThemeToggle } from "../../components/theme-toggle-simple"
+import { NotificationsComponent } from "../../components/notifications-simple"
+import { AchievementsComponent } from "../../components/achievements-simple"
 import { Brain, Trophy, Target, CheckCircle, BookOpen, Zap, Award } from "lucide-react"
 
 export default function AchievementsPage() {
