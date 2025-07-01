@@ -211,7 +211,7 @@ async function initAchievements() {
             category: achievementDef.category,
             rarity: achievementDef.rarity,
             points: achievementDef.points,
-            criteria: achievementDef.criteria
+            criteria: JSON.stringify(achievementDef.criteria)
           },
           create: {
             id: achievementDef.id,
@@ -221,7 +221,7 @@ async function initAchievements() {
             category: achievementDef.category,
             rarity: achievementDef.rarity,
             points: achievementDef.points,
-            criteria: achievementDef.criteria
+            criteria: JSON.stringify(achievementDef.criteria)
           }
         })
 

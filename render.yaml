@@ -1,23 +1,26 @@
 services:
   - type: web
-    name: cluely-fr
+    name: coachia-app
     env: node
     plan: free
-    buildCommand: npm ci --legacy-peer-deps && npx prisma generate && npm run build
-    startCommand: npm start
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: JWT_SECRET
-        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
-          name: cluely-fr-db
+          name: coachia-db
           property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
     healthCheckPath: /
     autoDeploy: true
 
 databases:
-  - name: cluely-fr-db
-    databaseName: cluely_fr
-    user: cluely_fr_user 
+  - name: coachia-db
+    databaseName: coachia
+    user: coachia_user
+    plan: free 
