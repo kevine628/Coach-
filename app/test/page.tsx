@@ -3,7 +3,7 @@ export default function TestPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Test Page - CoachIA
+          Test Page - CoachIA v2
         </h1>
         <p className="text-gray-600 mb-8">
           Si tu vois cette page, le déploiement fonctionne !
@@ -11,6 +11,9 @@ export default function TestPage() {
         <div className="bg-white p-6 rounded-lg shadow-md">
           <p className="text-green-600 font-semibold">
             ✅ Déploiement réussi !
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Commit: b8b71a9 - Imports corrigés
           </p>
         </div>
       </div>

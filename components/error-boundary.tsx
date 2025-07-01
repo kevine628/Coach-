@@ -1,8 +1,8 @@
 "use client"
 
 import { Component, ReactNode } from "react"
-import { Button } from "ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "ui/card"
+import { Button } from "./ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { AlertTriangle, RefreshCw, Home } from "lucide-react"
 import Link from "next/link"
 

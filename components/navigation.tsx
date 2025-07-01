@@ -3,8 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Button } from "ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar"
+import { Button } from "./ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +12,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "ui/sheet"
-import { Badge } from "ui/badge"
+} from "./ui/dropdown-menu"
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet"
+import { Badge } from "./ui/badge"
 import {
   Brain,
   Target,

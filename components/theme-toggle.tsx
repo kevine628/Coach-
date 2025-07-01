@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { Moon, Sun, Monitor } from "lucide-react"
-import { Button } from "ui/button"
+import { Button } from "./ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "ui/dropdown-menu"
+} from "./ui/dropdown-menu"
 
 type Theme = "light" | "dark" | "system"
 

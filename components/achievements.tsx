@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "ui/card"
-import { Badge } from "ui/badge"
-import { Progress } from "ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs"
-import { ScrollArea } from "ui/scroll-area"
+import { Button } from "./ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Badge } from "./ui/badge"
+import { Progress } from "./ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
+import { ScrollArea } from "./ui/scroll-area"
 import { 
   Trophy, 
   Target, 
