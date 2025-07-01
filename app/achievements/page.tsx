@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button-simple"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThemeToggle } from "@/components/theme-toggle"
-import NotificationsComponent from "@/components/notifications"
-import AchievementsComponent from "@/components/achievements"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-simple"
+import { ThemeToggle } from "@/components/theme-toggle-simple"
+import { NotificationsComponent } from "@/components/notifications-simple"
+import { AchievementsComponent } from "@/components/achievements-simple"
 import { Brain, Trophy, Target, CheckCircle, BookOpen, Zap, Award } from "lucide-react"
 
 export default function AchievementsPage() {
@@ -50,10 +50,7 @@ export default function AchievementsPage() {
             <Button variant="ghost" size="icon">
               <Award className="w-5 h-5" />
             </Button>
-            <Avatar>
-              <AvatarImage src="/placeholder.svg" alt="User" />
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
+            <Avatar src="/placeholder.svg" alt="User" fallback="U" />
           </div>
         </div>
       </header>
