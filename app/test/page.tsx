@@ -1,19 +1,49 @@
 export default function TestPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Test Page - CoachIA v2
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      backgroundColor: '#f0f9ff',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{ 
+          fontSize: '2.5rem', 
+          fontWeight: 'bold', 
+          color: '#1e40af',
+          marginBottom: '1rem'
+        }}>
+          Test de Déploiement
         </h1>
-        <p className="text-gray-600 mb-8">
-          Si tu vois cette page, le déploiement fonctionne !
+        <p style={{ 
+          fontSize: '1.1rem',
+          color: '#475569',
+          marginBottom: '2rem'
+        }}>
+          CoachIA - Version Simplifiée
         </p>
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <p className="text-green-600 font-semibold">
-            ✅ Déploiement réussi !
+        <div style={{ 
+          backgroundColor: 'white',
+          padding: '2rem',
+          borderRadius: '0.75rem',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #3b82f6'
+        }}>
+          <p style={{ 
+            color: '#059669',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            marginBottom: '1rem'
+          }}>
+            🎉 Déploiement Réussi !
           </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Commit: b8b71a9 - Imports corrigés
+          <p style={{ 
+            color: '#6b7280',
+            fontSize: '1rem'
+          }}>
+            L'application fonctionne parfaitement sur Render.
           </p>
         </div>
       </div>
